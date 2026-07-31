@@ -8,37 +8,48 @@ const joinInput = document.getElementById('join-id');
 const statusText = document.getElementById('status-text');
 const scoreboard = document.getElementById('scoreboard');
 const lobby = document.getElementById('lobby');
-const myScoreEl = document.getElementById('my-score');
-const oppScoreEl = document.getElementById('opponent-score');
 
 // Game State
 let peer, conn;
 let isHost = false;
-let myScore = 0;
-let oppScore = 0;
-let isDragging = false;
-let dragStart = { x: 0, y: 0 };
-let dragCurrent = { x: 0, y: 0 };
+let myRole = 'p1'; // 'p1' or 'p2'
 
-// Player Balls (Red = You, Blue = Opponent)
-let myBall = { x: 150, y: 380, radius: 15, vx: 0, vy: 0, isShot: false, color: '#ff5722' };
-let oppBall = { x: 150, y: 380, radius: 15, vx: 0, vy: 0, isShot: false, color: '#2196f3' };
+// Score State
+let scores = { p1: 0, p2: 0 };
 
-// Court Setup
-const rim = { x: 600, y: 220, width: 65, height: 10, nodeRadius: 6 };
-const backboard = { x: 665, y: 130, width: 12, height: 110 };
-const gravity = 0.42;
-const bounceDamping = 0.7;
+// Controls Input
+const keys = {};
+
+// Game Entities
+const p1 = { x: 150, y: 250, radius: 18, color: '#e53935', speed: 4 };
+const p2 = { x: 850, y: 250, radius: 18, color: '#1e88e5', speed: 4 };
+
+// Ball State
+const ball = {
+    x: 500,
+    y: 250,
+    radius: 10,
+    color: '#ff9800',
+    holder: 'p1', // 'p1', 'p2', or null (in air)
+    vx: 0,
+    vy: 0,
+    isShooting: false,
+    targetHoop: null
+};
+
+// Hoops (Top-Down Positions)
+const leftHoop = { x: 50, y: 250, radius: 15 };
+const rightHoop = { x: 950, y: 250, radius: 15 };
 
 // --- MULTIPLAYER SETUP (PEERJS) ---
 
-// Host Game
 hostBtn.addEventListener('click', () => {
     peer = new Peer();
     isHost = true;
+    myRole = 'p1';
 
     peer.on('open', (id) => {
-        statusText.innerHTML = `Your Room Code: b>${id}</b><br>Share this code with your friend!`;
+        statusText.innerHTML = `Game Code: <b>${id}</b><br>Share this with Player 2!`;
     });
 
     peer.on('connection', (connection) => {
@@ -47,207 +58,269 @@ hostBtn.addEventListener('click', () => {
     });
 });
 
-// Join Game
 joinBtn.addEventListener('click', () => {
-    const gameCode = joinInput.value.trim();
-    if (!gameCode) return alert('Enter a room code first!');
+    const code = joinInput.value.trim();
+    if (!code) return alert('Please enter a game code!');
 
     peer = new Peer();
+    isHost = false;
+    myRole = 'p2';
+
     peer.on('open', () => {
-        conn = peer.connect(gameCode);
+        conn = peer.connect(code);
         setupConnection();
     });
 });
 
-// Handle Data Connection
 function setupConnection() {
     conn.on('open', () => {
         lobby.classList.add('hidden');
         scoreboard.classList.remove('hidden');
-        document.getElementById('match-status').textContent = '⚡ LIVE MATCH ⚡';
     });
 
     conn.on('data', (data) => {
-        if (data.type === 'ballUpdate') {
-            oppBall.x = data.x;
-            oppBall.y = data.y;
-            oppBall.isShot = data.isShot;
-        } else if (data.type === 'scoreUpdate') {
-            oppScore = data.score;
-            oppScoreEl.textContent = oppScore;
+        if (data.type === 'sync') {
+            if (!isHost) {
+                p1.x = data.p1.x;
+                p1.y = data.p1.y;
+                ball.x = data.ball.x;
+                ball.y = data.ball.y;
+                ball.holder = data.ball.holder;
+                scores = data.scores;
+                updateScoreboard();
+            } else {
+                p2.x = data.p2.x;
+                p2.y = data.p2.y;
+            }
+        } else if (data.type === 'action') {
+            handlePlayerAction(data.role, data.action);
         }
     });
 }
 
-// Send local ball state over PeerJS connection
-function sendBallData() {
-    if (conn && conn.open) {
+function sendNetworkData() {
+    if (!conn || !conn.open) return;
+
+    if (isHost) {
         conn.send({
-            type: 'ballUpdate',
-            x: myBall.x,
-            y: myBall.y,
-            isShot: myBall.isShot
+            type: 'sync',
+            p1: { x: p1.x, y: p1.y },
+            p2: { x: p2.x, y: p2.y },
+            ball: { x: ball.x, y: ball.y, holder: ball.holder },
+            scores: scores
+        });
+    } else {
+        conn.send({
+            type: 'sync',
+            p2: { x: p2.x, y: p2.y }
         });
     }
 }
 
-// Send score updates
-function sendScoreData() {
+function sendAction(action) {
     if (conn && conn.open) {
-        conn.send({ type: 'scoreUpdate', score: myScore });
+        conn.send({ type: 'action', role: myRole, action: action });
     }
 }
 
-// --- CONTROLS ---
+// --- INPUT LISTENERS ---
 
-canvas.addEventListener('mousedown', (e) => {
-    if (myBall.isShot) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
 
-    if (Math.hypot(mouseX - myBall.x, mouseY - myBall.y) < myBall.radius * 2.5) {
-        isDragging = true;
-        dragStart = { x: mouseX, y: mouseY };
-        dragCurrent = { x: mouseX, y: mouseY };
+    if (e.code === 'Space') {
+        executeShootOrSteal(myRole);
+        sendAction('space');
     }
 });
 
-canvas.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const rect = canvas.getBoundingClientRect();
-    dragCurrent = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+window.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
 });
 
-canvas.addEventListener('mouseup', () => {
-    if (!isDragging) return;
-    isDragging = false;
+// --- GAMEPLAY MECHANICS ---
 
-    const dx = dragStart.x - dragCurrent.x;
-    const dy = dragStart.y - dragCurrent.y;
-
-    myBall.vx = dx * 0.16;
-    myBall.vy = dy * 0.16;
-    myBall.isShot = true;
-});
-
-function resetMyBall() {
-    myBall.x = 150;
-    myBall.y = 380;
-    myBall.vx = 0;
-    myBall.vy = 0;
-    myBall.isShot = false;
-    sendBallData();
+function handlePlayerAction(role, action) {
+    if (action === 'space') {
+        executeShootOrSteal(role);
+    }
 }
 
-// --- PHYSICS & COLLISIONS ---
+function executeShootOrSteal(role) {
+    const player = role === 'p1' ? p1 : p2;
+    const opponent = role === 'p1' ? p2 : p1;
 
-function handleCollisions() {
-    // Backboard
-    if (
-        myBall.x + myBall.radius > backboard.x &&
-        myBall.x - myBall.radius < backboard.x + backboard.width &&
-        myBall.y + myBall.radius > backboard.y &&
-        myBall.y - myBall.radius < backboard.y + backboard.height
-    ) {
-        myBall.x = backboard.x - myBall.radius;
-        myBall.vx = -myBall.vx * bounceDamping;
-    }
+    // Shooting
+    if (ball.holder === role) {
+        ball.holder = null;
+        ball.isShooting = true;
 
-    // Rim Nodes
-    const rimNodes = [{ x: rim.x, y: rim.y }, { x: rim.x + rim.width, y: rim.y }];
-    rimNodes.forEach(node => {
-        const dx = myBall.x - node.x;
-        const dy = myBall.y - node.y;
-        const distance = Math.hypot(dx, dy);
-        const minDist = myBall.radius + rim.nodeRadius;
+        // P1 shoots right, P2 shoots left
+        const target = role === 'p1' ? rightHoop : leftHoop;
+        const dx = target.x - ball.x;
+        const dy = target.y - ball.y;
+        const dist = Math.hypot(dx, dy);
 
-        if (distance < minDist) {
-            const angle = Math.atan2(dy, dx);
-            myBall.x = node.x + Math.cos(angle) * minDist;
-            myBall.y = node.y + Math.sin(angle) * minDist;
-
-            const normalX = Math.cos(angle);
-            const normalY = Math.sin(angle);
-            const dot = myBall.vx * normalX + myBall.vy * normalY;
-
-            myBall.vx = (myBall.vx - 2 * dot * normalX) * bounceDamping;
-            myBall.vy = (myBall.vy - 2 * dot * normalY) * bounceDamping;
+        ball.vx = (dx / dist) * 7;
+        ball.vy = (dy / dist) * 7;
+        ball.targetHoop = target;
+    } 
+    // Stealing
+    else if (ball.holder === (role === 'p1' ? 'p2' : 'p1')) {
+        const dist = Math.hypot(player.x - opponent.x, player.y - opponent.y);
+        if (dist < 45) { // Steal radius
+            ball.holder = role;
         }
-    });
-}
-
-function checkScore() {
-    if (
-        myBall.x > rim.x + 8 &&
-        myBall.x < rim.x + rim.width - 8 &&
-        myBall.y > rim.y &&
-        myBall.y < rim.y + rim.height + 10 &&
-        myBall.vy > 0
-    ) {
-        myScore += 1;
-        myScoreEl.textContent = myScore;
-        sendScoreData();
-        resetMyBall();
     }
 }
 
-// --- GAME LOOP ---
+function resetAfterScore() {
+    p1.x = 200; p1.y = 250;
+    p2.x = 800; p2.y = 250;
+    ball.x = 500; ball.y = 250;
+    ball.vx = 0; ball.vy = 0;
+    ball.isShooting = false;
+    ball.holder = 'p1';
+    updateScoreboard();
+}
 
-function update() {
+function updateScoreboard() {
+    document.getElementById('p1-score').textContent = scores.p1;
+    document.getElementById('p2-score').textContent = scores.p2;
+}
+
+// --- PHYSICS AND LOGIC UPDATES ---
+
+function updateGame() {
+    // Local player movement
+    const myPlayer = myRole === 'p1' ? p1 : p2;
+
+    if (keys['a'] || keys['arrowleft']) myPlayer.x -= myPlayer.speed;
+    if (keys['d'] || keys['arrowright']) myPlayer.x += myPlayer.speed;
+    if (keys['w'] || keys['arrowup']) myPlayer.y -= myPlayer.speed;
+    if (keys['s'] || keys['arrowdown']) myPlayer.y += myPlayer.speed;
+
+    // Boundaries
+    myPlayer.x = Math.max(p1.radius, Math.min(canvas.width - p1.radius, myPlayer.x));
+    myPlayer.y = Math.max(p1.radius, Math.min(canvas.height - p1.radius, myPlayer.y));
+
+    // Ball movement & updates (Handled by Host)
+    if (isHost) {
+        if (ball.holder === 'p1') {
+            ball.x = p1.x + 12;
+            ball.y = p1.y;
+        } else if (ball.holder === 'p2') {
+            ball.x = p2.x - 12;
+            ball.y = p2.y;
+        } else if (ball.isShooting) {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Check hoop collision
+            const distToHoop = Math.hypot(ball.x - ball.targetHoop.x, ball.y - ball.targetHoop.y);
+            if (distToHoop < 12) {
+                if (ball.targetHoop === rightHoop) scores.p1 += 2;
+                else scores.p2 += 2;
+                resetAfterScore();
+            }
+
+            // Out of bounds missed shot reset
+            if (ball.x < 0 || ball.x > canvas.width || ball.y < 0 || ball.y > canvas.height) {
+                ball.isShooting = false;
+                ball.holder = null;
+            }
+        } else {
+            // Loose ball pickup
+            if (Math.hypot(p1.x - ball.x, p1.y - ball.y) < p1.radius + ball.radius) ball.holder = 'p1';
+            if (Math.hypot(p2.x - ball.x, p2.y - ball.y) < p2.radius + ball.radius) ball.holder = 'p2';
+        }
+
+        sendNetworkData();
+    } else {
+        sendNetworkData();
+    }
+}
+
+// --- RENDER COURT & PLAYERS ---
+
+function drawCourt() {
+    // Clear court floor
+    ctx.fillStyle = '#d29e62';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+
+    // Center Line & Circle
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Key Areas (Paint)
+    ctx.strokeRect(0, 150, 150, 200);
+    ctx.strokeRect(850, 150, 150, 200);
+
+    // Three-point arcs
+    ctx.beginPath();
+    ctx.arc(50, 250, 180, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(950, 250, 180, Math.PI / 2, -Math.PI / 2);
+    ctx.stroke();
+
+    // Hoops
+    ctx.fillStyle = '#ff5722';
+    ctx.beginPath();
+    ctx.arc(leftHoop.x, leftHoop.y, leftHoop.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(rightHoop.x, rightHoop.y, rightHoop.radius, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Hoop & Backboard
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(backboard.x, backboard.y, backboard.width, backboard.height);
-    ctx.fillStyle = '#ff5722';
-    ctx.fillRect(rim.x, rim.y, rim.width, rim.height);
+    drawCourt();
 
-    // Update Local Ball Physics
-    if (myBall.isShot) {
-        myBall.x += myBall.vx;
-        myBall.y += myBall.vy;
-        myBall.vy += gravity;
-
-        handleCollisions();
-        checkScore();
-        sendBallData();
-
-        if (myBall.y > canvas.height + 50 || myBall.x > canvas.width + 50 || myBall.x < -50) {
-            resetMyBall();
-        }
-    }
-
-    // Aim Line
-    if (isDragging) {
-        ctx.beginPath();
-        ctx.moveTo(myBall.x, myBall.y);
-        ctx.lineTo(myBall.x + (dragStart.x - dragCurrent.x), myBall.y + (dragStart.y - dragCurrent.y));
-        ctx.strokeStyle = '#ffffff';
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-
-    // Render Opponent Ball (Blue)
-    if (oppBall.isShot || oppBall.x !== 150) {
-        ctx.beginPath();
-        ctx.arc(oppBall.x, oppBall.y, oppBall.radius, 0, Math.PI * 2);
-        ctx.fillStyle = oppBall.color;
-        ctx.fill();
-        ctx.stroke();
-    }
-
-    // Render My Ball (Red)
+    // Draw P1 (Red)
+    ctx.fillStyle = p1.color;
     ctx.beginPath();
-    ctx.arc(myBall.x, myBall.y, myBall.radius, 0, Math.PI * 2);
-    ctx.fillStyle = myBall.color;
+    ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
 
-    requestAnimationFrame(update);
+    // Draw P2 (Blue)
+    ctx.fillStyle = p2.color;
+    ctx.beginPath();
+    ctx.arc(p2.x, p2.y, p2.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    // Draw Ball
+    ctx.fillStyle = ball.color;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
 }
 
-update();
+function loop() {
+    updateGame();
+    render();
+    requestAnimationFrame(loop);
+}
+
+loop();
