@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 1v1 Basketball - Arena Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 1v1 Basketball - Mobile & Touch</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -25,13 +25,25 @@
             <div id="shot-sweet-spot"></div>
         </div>
 
+        <div id="touch-controls">
+            <div id="joystick-zone">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
+            </div>
+
+            <div id="action-zone">
+                <button id="shoot-btn">SHOOT</button>
+            </div>
+        </div>
+
         <div id="controls-hint">
-            <b>WASD</b> Move | <b>Mouse</b> Aim | <b>Click & Hold Left Mouse</b> Shoot | <b>P</b> Pause
+            Use <b>Virtual Joystick</b> to Move | Drag <b>Right Side</b> to Aim | Tap/Hold <b>SHOOT</b>
         </div>
 
         <div id="pause-menu">
             PAUSED<br>
-            <span style="font-size:18px; font-family:Arial;">Press P to Resume</span>
+            <span style="font-size:18px; font-family:Arial;">Tap screen to Resume</span>
         </div>
     </div>
 
