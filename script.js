@@ -12,21 +12,21 @@ let dragCurrent = { x: 0, y: 0 };
 const ballDefault = { x: 150, y: 380, radius: 18, vx: 0, vy: 0, isShot: false };
 let ball = { ...ballDefault };
 
-// Hoop properties
-const hoop = { x: 650, y: 200, width: 60, height: 8 };
+// Hoop & Backboard dimensions
+const rim = { x: 620, y: 220, width: 60, height: 8 };
+const backboard = { x: 680, y: 140, width: 10, height: 100 };
 
 // Physics constants
-const gravity = 0.4;
-const friction = 0.98;
+const gravity = 0.45;
+const bounceDamping = 0.65; // Speed loss on collision
 
-// Event Listeners for Aiming and Shooting
+// Event Listeners
 canvas.addEventListener('mousedown', (e) => {
     if (ball.isShot) return;
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Check if click is near the ball
     const dist = Math.hypot(mouseX - ball.x, mouseY - ball.y);
     if (dist < ball.radius * 2) {
         isDragging = true;
@@ -45,28 +45,66 @@ canvas.addEventListener('mouseup', () => {
     if (!isDragging) return;
     isDragging = false;
 
-    // Calculate launch velocity based on drag distance
     const dx = dragStart.x - dragCurrent.x;
     const dy = dragStart.y - dragCurrent.y;
 
-    ball.vx = dx * 0.15;
-    ball.vy = dy * 0.15;
+    ball.vx = dx * 0.16;
+    ball.vy = dy * 0.16;
     ball.isShot = true;
 });
 
-// Reset ball after shot
 function resetBall() {
     ball = { ...ballDefault };
 }
 
-// Check if score was made
+// Collisions with Backboard and Rim Points
+function handleCollisions() {
+    // 1. Backboard Collision (vertical front face)
+    if (
+        ball.x + ball.radius > backboard.x &&
+        ball.x - ball.radius < backboard.x + backboard.width &&
+        ball.y > backboard.y &&
+        ball.y < backboard.y + backboard.height
+    ) {
+        ball.x = backboard.x - ball.radius;
+        ball.vx = -ball.vx * bounceDamping; // Reverse horizontal velocity
+    }
+
+    // Rim collision points (Front Rim Edge and Back Rim Edge)
+    const rimPoints = [
+        { x: rim.x, y: rim.y },                   // Front edge of rim
+        { x: rim.x + rim.width, y: rim.y }        // Back edge of rim
+    ];
+
+    rimPoints.forEach(point => {
+        const dx = ball.x - point.x;
+        const dy = ball.y - point.y;
+        const dist = Math.hypot(dx, dy);
+
+        // If ball hits a rim edge point
+        if (dist < ball.radius) {
+            // Calculate bounce angle
+            const angle = Math.atan2(dy, dx);
+            const speed = Math.hypot(ball.vx, ball.vy) * bounceDamping;
+
+            ball.vx = Math.cos(angle) * speed;
+            ball.vy = Math.sin(angle) * speed;
+
+            // Push ball slightly out of collision to prevent sticking
+            ball.x = point.x + Math.cos(angle) * ball.radius;
+            ball.y = point.y + Math.sin(angle) * ball.radius;
+        }
+    });
+}
+
+// Check if ball passes cleanly through the hoop
 function checkScore() {
     if (
-        ball.x > hoop.x &&
-        ball.x < hoop.x + hoop.width &&
-        ball.y > hoop.y &&
-        ball.y < hoop.y + hoop.height &&
-        ball.vy > 0 // Ball must be falling downwards
+        ball.x > rim.x + 10 &&
+        ball.x < rim.x + rim.width - 10 &&
+        ball.y > rim.y &&
+        ball.y < rim.y + rim.height + 10 &&
+        ball.vy > 0 // Ball must be moving downward
     ) {
         score += 1;
         scoreEl.textContent = score;
@@ -76,30 +114,32 @@ function checkScore() {
 
 // Game Loop
 function update() {
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Hoop & Backboard
+    // Draw Backboard
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(hoop.x + hoop.width, hoop.y - 60, 10, 80); // Backboard
-    ctx.fillStyle = '#ff5722';
-    ctx.fillRect(hoop.x, hoop.y, hoop.width, hoop.height); // Rim
+    ctx.fillRect(backboard.x, backboard.y, backboard.width, backboard.height);
 
-    // Update Ball Physics
+    // Draw Rim
+    ctx.fillStyle = '#ff5722';
+    ctx.fillRect(rim.x, rim.y, rim.width, rim.height);
+
+    // Update Physics if ball is in air
     if (ball.isShot) {
         ball.x += ball.vx;
         ball.y += ball.vy;
         ball.vy += gravity;
 
+        handleCollisions();
         checkScore();
 
-        // Out of bounds reset
+        // Reset if ball leaves screen bounds
         if (ball.y > canvas.height + 50 || ball.x > canvas.width + 50 || ball.x < -50) {
             resetBall();
         }
     }
 
-    // Draw Aiming Line
+    // Draw Aiming Trajectory Line
     if (isDragging) {
         ctx.beginPath();
         ctx.moveTo(ball.x, ball.y);
