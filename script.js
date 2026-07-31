@@ -10,21 +10,21 @@ window.addEventListener('load', () => {
     renderer.shadowMap.enabled = true;
     document.getElementById('game-container').appendChild(renderer.domElement);
 
-    // Arena Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Arena Spotlights & Ambient Light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    const stadiumLight1 = new THREE.SpotLight(0xffffff, 1.5);
+    const stadiumLight1 = new THREE.SpotLight(0xffffff, 1.4);
     stadiumLight1.position.set(0, 30, 20);
     stadiumLight1.castShadow = true;
     scene.add(stadiumLight1);
 
-    const stadiumLight2 = new THREE.SpotLight(0xffffff, 1.5);
+    const stadiumLight2 = new THREE.SpotLight(0xffffff, 1.4);
     stadiumLight2.position.set(0, 30, -20);
     scene.add(stadiumLight2);
 
     // --- 2. STADIUM & COURT BUILD ---
-    // Outer Arena Base
+    // Outer Arena Base Floor
     const arenaFloor = new THREE.Mesh(
         new THREE.BoxGeometry(40, 0.1, 50),
         new THREE.MeshStandardMaterial({ color: 0x22222a, roughness: 0.8 })
@@ -32,7 +32,7 @@ window.addEventListener('load', () => {
     arenaFloor.position.y = -0.15;
     scene.add(arenaFloor);
 
-    // Court Hardwood
+    // Hardwood Court
     const courtWidth = 28;  
     const courtHeight = 15; 
 
@@ -48,7 +48,7 @@ window.addEventListener('load', () => {
     centerLine.position.set(0, 0, 0);
     scene.add(centerLine);
 
-    // Audience Stands / Bleachers
+    // Stadium Bleachers / Stands
     function createBleachers(x, z, rotY, width) {
         const group = new THREE.Group();
         for (let i = 0; i < 5; i++) {
@@ -69,7 +69,7 @@ window.addEventListener('load', () => {
     createBleachers(0, 22, Math.PI, 30);       // South
     createBleachers(0, -22, 0, 30);            // North
 
-    // Hoops & Rim Colliders
+    // Hoop Generator
     function createHoop(zPos) {
         const group = new THREE.Group();
 
@@ -97,6 +97,7 @@ window.addEventListener('load', () => {
         group.add(rim);
 
         scene.add(group);
+        group.updateMatrixWorld(true);
 
         return {
             rimPos: new THREE.Vector3(0, 3.05, zPos + rimOffset),
@@ -168,9 +169,8 @@ window.addEventListener('load', () => {
     ball.castShadow = true;
     scene.add(ball);
 
-    // --- 4. GAME STATE VARIABLES ---
+    // --- 4. GAME STATE & CONTROLS ---
     let playerScore = 0;
-    let cpuScore = 0;
     let isLocked = false;
     let isPaused = false;
 
@@ -189,7 +189,7 @@ window.addEventListener('load', () => {
 
     let animTime = 0;
 
-    // --- 5. CONTROLS & PAUSE MECHANICS ---
+    // Pointer Lock Controls
     document.body.addEventListener('click', () => {
         if (!isLocked && !isPaused) document.body.requestPointerLock();
     });
@@ -235,7 +235,7 @@ window.addEventListener('load', () => {
         }
     });
 
-    // --- 6. PHYSICS & SHOOTING ---
+    // --- 5. PHYSICS ENGINE & SHOOTING ---
     function releaseShot() {
         isBallInAir = true;
         ballPossession = 'none';
@@ -292,7 +292,7 @@ window.addEventListener('load', () => {
         }
     }
 
-    // --- 7. ANIMATION LOOP ---
+    // --- 6. MAIN GAME LOOP ---
     const clock = new THREE.Clock();
 
     function animate() {
@@ -303,6 +303,7 @@ window.addEventListener('load', () => {
         if (isLocked && !isPaused) {
             animTime += delta;
 
+            // Player Movement Calculation
             const speed = 6.0;
             const moveDir = new THREE.Vector3();
 
@@ -313,18 +314,18 @@ window.addEventListener('load', () => {
 
             const isMoving = moveDir.lengthSq() > 0;
 
-            moveDir.normalize();
-            moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.yaw);
-
-            player.group.position.addScaledVector(moveDir, speed * delta);
-
             if (isMoving) {
+                moveDir.normalize();
+                moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.yaw);
+                player.group.position.addScaledVector(moveDir, speed * delta);
                 player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
             }
 
+            // Boundary Lock
             player.group.position.x = Math.max(-courtHeight / 2 + 0.5, Math.min(courtHeight / 2 - 0.5, player.group.position.x));
             player.group.position.z = Math.max(-courtWidth / 2 + 0.5, Math.min(courtWidth / 2 - 0.5, player.group.position.z));
 
+            // Camera Tracking
             const camOffset = new THREE.Vector3(0, 2.2, 4.5);
             camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.yaw);
             camera.position.copy(player.group.position).add(camOffset);
@@ -335,6 +336,7 @@ window.addEventListener('load', () => {
             lookTarget.y += Math.sin(cameraRotation.pitch) * 5;
             camera.lookAt(lookTarget);
 
+            // CPU AI Tracking
             let cpuTargetPos = player.group.position.clone().add(new THREE.Vector3(0, 0, -2));
             if (ballPossession === 'none') {
                 cpuTargetPos = ball.position.clone();
@@ -350,6 +352,7 @@ window.addEventListener('load', () => {
 
             animateCharacter(player, isMoving, isChargingShot, animTime);
 
+            // Charging Meter logic
             if (isChargingShot) {
                 shotPower += shotPowerDir * 120 * delta;
                 if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
@@ -357,7 +360,7 @@ window.addEventListener('load', () => {
                 document.getElementById('shot-meter-bar').style.width = `${shotPower}%`;
             }
 
-            // Ball Dribble & Physical Retrieval Loop
+            // Ball Dynamics & Rebounding Logic
             if (ballPossession === 'player') {
                 const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                 const handOffset = new THREE.Vector3(0.4, 0, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
@@ -388,7 +391,7 @@ window.addEventListener('load', () => {
                     if (Math.abs(ballVel.y) < 1.0) ballVel.y = 0;
                 }
 
-                // Walk over ball to grab it
+                // Loose Ball Pickup Detection
                 const distPlayerToBall = player.group.position.distanceTo(ball.position);
                 const distCpuToBall = cpu.group.position.distanceTo(ball.position);
 
