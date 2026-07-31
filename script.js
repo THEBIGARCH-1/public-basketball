@@ -24,7 +24,6 @@ window.addEventListener('load', () => {
     scene.add(stadiumLight2);
 
     // --- 2. STADIUM & COURT BUILD ---
-    // Outer Arena Base Floor
     const arenaFloor = new THREE.Mesh(
         new THREE.BoxGeometry(40, 0.1, 50),
         new THREE.MeshStandardMaterial({ color: 0x22222a, roughness: 0.8 })
@@ -32,7 +31,6 @@ window.addEventListener('load', () => {
     arenaFloor.position.y = -0.15;
     scene.add(arenaFloor);
 
-    // Hardwood Court
     const courtWidth = 28;  
     const courtHeight = 15; 
 
@@ -48,7 +46,6 @@ window.addEventListener('load', () => {
     centerLine.position.set(0, 0, 0);
     scene.add(centerLine);
 
-    // Stadium Bleachers / Stands
     function createBleachers(x, z, rotY, width) {
         const group = new THREE.Group();
         for (let i = 0; i < 5; i++) {
@@ -64,12 +61,11 @@ window.addEventListener('load', () => {
         scene.add(group);
     }
 
-    createBleachers(14, 0, -Math.PI / 2, 40); // East
-    createBleachers(-14, 0, Math.PI / 2, 40);  // West
-    createBleachers(0, 22, Math.PI, 30);       // South
-    createBleachers(0, -22, 0, 30);            // North
+    createBleachers(14, 0, -Math.PI / 2, 40);
+    createBleachers(-14, 0, Math.PI / 2, 40);
+    createBleachers(0, 22, Math.PI, 30);
+    createBleachers(0, -22, 0, 30);
 
-    // Hoop Generator
     function createHoop(zPos) {
         const group = new THREE.Group();
 
@@ -171,17 +167,20 @@ window.addEventListener('load', () => {
 
     // --- 4. GAME STATE & CONTROLS ---
     let playerScore = 0;
-    let isLocked = false;
     let isPaused = false;
 
     let keys = {};
     const cameraRotation = { yaw: 0, pitch: 0 };
 
+    let touchJoystickDir = { x: 0, z: 0 };
+    let touchLookId = null;
+    let lastTouchX = 0, lastTouchY = 0;
+
     let isChargingShot = false;
     let shotPower = 0;
     let shotPowerDir = 1;
 
-    let ballPossession = 'player'; // 'player', 'cpu', or 'none'
+    let ballPossession = 'player';
     let isBallInAir = false;
     let hasScoredThisShot = false;
     let ballVel = new THREE.Vector3();
@@ -189,51 +188,128 @@ window.addEventListener('load', () => {
 
     let animTime = 0;
 
-    // Pointer Lock Controls
-    document.body.addEventListener('click', () => {
-        if (!isLocked && !isPaused) document.body.requestPointerLock();
+    // --- TOUCH & JOYSTICK CONTROLS ---
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickStick = document.getElementById('joystick-stick');
+    const shootBtn = document.getElementById('shoot-btn');
+
+    let joystickCenter = { x: 0, y: 0 };
+    let joystickTouchId = null;
+
+    joystickZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        const rect = joystickZone.getBoundingClientRect();
+        joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        updateJoystick(touch.clientX, touch.clientY);
     });
 
-    document.addEventListener('pointerlockchange', () => {
-        isLocked = document.pointerLockElement === document.body;
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isLocked || isPaused) return;
-        cameraRotation.yaw -= e.movementX * 0.0025;
-        cameraRotation.pitch -= e.movementY * 0.0025;
-        cameraRotation.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 4, cameraRotation.pitch));
-    });
-
-    window.addEventListener('keydown', (e) => {
-        keys[e.code] = true;
-
-        if (e.code === 'KeyP') {
-            isPaused = !isPaused;
-            document.getElementById('pause-menu').style.display = isPaused ? 'block' : 'none';
-            if (isPaused && document.pointerLockElement) {
-                document.exitPointerLock();
+    joystickZone.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joystickTouchId) {
+                updateJoystick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
             }
         }
     });
 
-    window.addEventListener('keyup', (e) => keys[e.code] = false);
+    function resetJoystick() {
+        joystickTouchId = null;
+        touchJoystickDir = { x: 0, z: 0 };
+        joystickStick.style.transform = `translate(0px, 0px)`;
+    }
 
-    window.addEventListener('mousedown', (e) => {
-        if (e.button === 0 && isLocked && !isPaused && ballPossession === 'player' && !isBallInAir) {
+    joystickZone.addEventListener('touchend', resetJoystick);
+    joystickZone.addEventListener('touchcancel', resetJoystick);
+
+    function updateJoystick(clientX, clientY) {
+        const dx = clientX - joystickCenter.x;
+        const dy = clientY - joystickCenter.y;
+        const dist = Math.hypot(dx, dy);
+        const maxRadius = 45;
+
+        const angle = Math.atan2(dy, dx);
+        const clampedDist = Math.min(dist, maxRadius);
+
+        const stickX = Math.cos(angle) * clampedDist;
+        const stickY = Math.sin(angle) * clampedDist;
+
+        joystickStick.style.transform = `translate(${stickX}px, ${stickY}px)`;
+
+        touchJoystickDir.x = stickX / maxRadius;
+        touchJoystickDir.z = stickY / maxRadius;
+    }
+
+    // Right-Screen Drag to Look / Aim
+    document.addEventListener('touchstart', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (touch.clientX > window.innerWidth / 2 && touchLookId === null && e.target !== shootBtn) {
+                touchLookId = touch.identifier;
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }
+        }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (touch.identifier === touchLookId) {
+                const deltaX = touch.clientX - lastTouchX;
+                const deltaY = touch.clientY - lastTouchY;
+
+                cameraRotation.yaw -= deltaX * 0.005;
+                cameraRotation.pitch -= deltaY * 0.005;
+                cameraRotation.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 4, cameraRotation.pitch));
+
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }
+        }
+    });
+
+    function stopLookTouch(e) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === touchLookId) {
+                touchLookId = null;
+            }
+        }
+    }
+
+    document.addEventListener('touchend', stopLookTouch);
+    document.addEventListener('touchcancel', stopLookTouch);
+
+    // Shoot Button Touch Events
+    shootBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (!isPaused && ballPossession === 'player' && !isBallInAir) {
             isChargingShot = true;
             shotPower = 0;
             document.getElementById('shot-meter-container').style.display = 'block';
         }
     });
 
-    window.addEventListener('mouseup', (e) => {
-        if (e.button === 0 && isChargingShot) {
+    shootBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (isChargingShot) {
             isChargingShot = false;
             document.getElementById('shot-meter-container').style.display = 'none';
             releaseShot();
         }
     });
+
+    // Desktop Key listeners fallback
+    window.addEventListener('keydown', (e) => {
+        keys[e.code] = true;
+        if (e.code === 'KeyP') {
+            isPaused = !isPaused;
+            document.getElementById('pause-menu').style.display = isPaused ? 'block' : 'none';
+        }
+    });
+
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
 
     // --- 5. PHYSICS ENGINE & SHOOTING ---
     function releaseShot() {
@@ -300,10 +376,10 @@ window.addEventListener('load', () => {
 
         const delta = clock.getDelta();
 
-        if (isLocked && !isPaused) {
+        if (!isPaused) {
             animTime += delta;
 
-            // Player Movement Calculation
+            // Movement via Keyboard or Touch Joystick
             const speed = 6.0;
             const moveDir = new THREE.Vector3();
 
@@ -311,6 +387,11 @@ window.addEventListener('load', () => {
             if (keys['KeyS']) moveDir.z += 1;
             if (keys['KeyA']) moveDir.x -= 1;
             if (keys['KeyD']) moveDir.x += 1;
+
+            if (touchJoystickDir.x !== 0 || touchJoystickDir.z !== 0) {
+                moveDir.x = touchJoystickDir.x;
+                moveDir.z = touchJoystickDir.z;
+            }
 
             const isMoving = moveDir.lengthSq() > 0;
 
@@ -321,7 +402,7 @@ window.addEventListener('load', () => {
                 player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
             }
 
-            // Boundary Lock
+            // Court Bounds
             player.group.position.x = Math.max(-courtHeight / 2 + 0.5, Math.min(courtHeight / 2 - 0.5, player.group.position.x));
             player.group.position.z = Math.max(-courtWidth / 2 + 0.5, Math.min(courtWidth / 2 - 0.5, player.group.position.z));
 
@@ -336,7 +417,7 @@ window.addEventListener('load', () => {
             lookTarget.y += Math.sin(cameraRotation.pitch) * 5;
             camera.lookAt(lookTarget);
 
-            // CPU AI Tracking
+            // CPU AI
             let cpuTargetPos = player.group.position.clone().add(new THREE.Vector3(0, 0, -2));
             if (ballPossession === 'none') {
                 cpuTargetPos = ball.position.clone();
@@ -352,7 +433,7 @@ window.addEventListener('load', () => {
 
             animateCharacter(player, isMoving, isChargingShot, animTime);
 
-            // Charging Meter logic
+            // Shot charging
             if (isChargingShot) {
                 shotPower += shotPowerDir * 120 * delta;
                 if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
@@ -360,7 +441,7 @@ window.addEventListener('load', () => {
                 document.getElementById('shot-meter-bar').style.width = `${shotPower}%`;
             }
 
-            // Ball Dynamics & Rebounding Logic
+            // Ball Dynamics & Rebounding
             if (ballPossession === 'player') {
                 const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                 const handOffset = new THREE.Vector3(0.4, 0, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
@@ -391,7 +472,7 @@ window.addEventListener('load', () => {
                     if (Math.abs(ballVel.y) < 1.0) ballVel.y = 0;
                 }
 
-                // Loose Ball Pickup Detection
+                // Loose Ball Manual Retrieval
                 const distPlayerToBall = player.group.position.distanceTo(ball.position);
                 const distCpuToBall = cpu.group.position.distanceTo(ball.position);
 
