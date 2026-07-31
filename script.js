@@ -10,7 +10,7 @@ window.addEventListener('load', () => {
     renderer.shadowMap.enabled = true;
     document.getElementById('game-container').appendChild(renderer.domElement);
 
-    // Arena Lighting
+    // Arena Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
@@ -24,7 +24,7 @@ window.addEventListener('load', () => {
     scene.add(stadiumLight2);
 
     // --- 2. STADIUM & COURT BUILD ---
-    // Concrete Arena Base
+    // Outer Arena Base
     const arenaFloor = new THREE.Mesh(
         new THREE.BoxGeometry(40, 0.1, 50),
         new THREE.MeshStandardMaterial({ color: 0x22222a, roughness: 0.8 })
@@ -32,7 +32,7 @@ window.addEventListener('load', () => {
     arenaFloor.position.y = -0.15;
     scene.add(arenaFloor);
 
-    // Hardwood Basketball Court
+    // Court Hardwood
     const courtWidth = 28;  
     const courtHeight = 15; 
 
@@ -48,7 +48,7 @@ window.addEventListener('load', () => {
     centerLine.position.set(0, 0, 0);
     scene.add(centerLine);
 
-    // Stadium Bleachers / Audience Stands
+    // Audience Stands / Bleachers
     function createBleachers(x, z, rotY, width) {
         const group = new THREE.Group();
         for (let i = 0; i < 5; i++) {
@@ -64,12 +64,12 @@ window.addEventListener('load', () => {
         scene.add(group);
     }
 
-    createBleachers(14, 0, -Math.PI / 2, 40); // East Stands
-    createBleachers(-14, 0, Math.PI / 2, 40);  // West Stands
-    createBleachers(0, 22, Math.PI, 30);       // South Stands
-    createBleachers(0, -22, 0, 30);            // North Stands
+    createBleachers(14, 0, -Math.PI / 2, 40); // East
+    createBleachers(-14, 0, Math.PI / 2, 40);  // West
+    createBleachers(0, 22, Math.PI, 30);       // South
+    createBleachers(0, -22, 0, 30);            // North
 
-    // Hoop Builder
+    // Hoops & Rim Colliders
     function createHoop(zPos) {
         const group = new THREE.Group();
 
@@ -181,7 +181,6 @@ window.addEventListener('load', () => {
     let shotPower = 0;
     let shotPowerDir = 1;
 
-    // Ball & Possession State
     let ballPossession = 'player'; // 'player', 'cpu', or 'none'
     let isBallInAir = false;
     let hasScoredThisShot = false;
@@ -190,7 +189,7 @@ window.addEventListener('load', () => {
 
     let animTime = 0;
 
-    // --- 5. CONTROLS & PAUSE ---
+    // --- 5. CONTROLS & PAUSE MECHANICS ---
     document.body.addEventListener('click', () => {
         if (!isLocked && !isPaused) document.body.requestPointerLock();
     });
@@ -236,7 +235,7 @@ window.addEventListener('load', () => {
         }
     });
 
-    // --- 6. PHYSICS & SHOOTING MECHANICS ---
+    // --- 6. PHYSICS & SHOOTING ---
     function releaseShot() {
         isBallInAir = true;
         ballPossession = 'none';
@@ -259,7 +258,6 @@ window.addEventListener('load', () => {
     function checkRimAndBackboardCollisions() {
         const ballRadius = 0.24;
 
-        // Rim bounce
         const distToRim = ball.position.distanceTo(northHoop.rimPos);
         if (Math.abs(distToRim - northHoop.rimRadius) < ballRadius + 0.05 && Math.abs(ball.position.y - northHoop.rimPos.y) < 0.2) {
             ballVel.x *= -0.6;
@@ -267,7 +265,6 @@ window.addEventListener('load', () => {
             ballVel.y *= 0.5;
         }
 
-        // Backboard bounce
         if (northHoop.backboardBox.intersectsSphere(new THREE.Sphere(ball.position, ballRadius))) {
             ballVel.z = Math.abs(ballVel.z) * 0.7;
         }
@@ -295,7 +292,7 @@ window.addEventListener('load', () => {
         }
     }
 
-    // --- 7. ANIMATION & GAME LOOP ---
+    // --- 7. ANIMATION LOOP ---
     const clock = new THREE.Clock();
 
     function animate() {
@@ -306,7 +303,6 @@ window.addEventListener('load', () => {
         if (isLocked && !isPaused) {
             animTime += delta;
 
-            // Player Movement
             const speed = 6.0;
             const moveDir = new THREE.Vector3();
 
@@ -326,11 +322,9 @@ window.addEventListener('load', () => {
                 player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
             }
 
-            // Boundary limits
             player.group.position.x = Math.max(-courtHeight / 2 + 0.5, Math.min(courtHeight / 2 - 0.5, player.group.position.x));
             player.group.position.z = Math.max(-courtWidth / 2 + 0.5, Math.min(courtWidth / 2 - 0.5, player.group.position.z));
 
-            // Camera follow
             const camOffset = new THREE.Vector3(0, 2.2, 4.5);
             camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.yaw);
             camera.position.copy(player.group.position).add(camOffset);
@@ -341,7 +335,6 @@ window.addEventListener('load', () => {
             lookTarget.y += Math.sin(cameraRotation.pitch) * 5;
             camera.lookAt(lookTarget);
 
-            // CPU AI Behavior: Chases ball if loose, guards player if player has ball
             let cpuTargetPos = player.group.position.clone().add(new THREE.Vector3(0, 0, -2));
             if (ballPossession === 'none') {
                 cpuTargetPos = ball.position.clone();
@@ -357,7 +350,6 @@ window.addEventListener('load', () => {
 
             animateCharacter(player, isMoving, isChargingShot, animTime);
 
-            // Shot Meter Charging
             if (isChargingShot) {
                 shotPower += shotPowerDir * 120 * delta;
                 if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
@@ -365,43 +357,38 @@ window.addEventListener('load', () => {
                 document.getElementById('shot-meter-bar').style.width = `${shotPower}%`;
             }
 
-            // --- BALL POSSESSION & PHYSICAL LOOSE BALL LOGIC ---
+            // Ball Dribble & Physical Retrieval Loop
             if (ballPossession === 'player') {
-                // Dribbling
                 const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                 const handOffset = new THREE.Vector3(0.4, 0, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
                 ball.position.copy(player.group.position).add(handOffset);
                 ball.position.y = bounceHeight;
             } else if (ballPossession === 'cpu') {
-                // CPU holds ball
                 const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                 ball.position.copy(cpu.group.position).add(new THREE.Vector3(0.4, 0, 0.3));
                 ball.position.y = bounceHeight;
             } else {
-                // Ball is loose in the air or bouncing on floor
                 ballVel.y += gravity * delta;
                 ball.position.addScaledVector(ballVel, delta);
 
                 checkRimAndBackboardCollisions();
 
-                // Basket Scoring Check
                 if (!hasScoredThisShot && ball.position.distanceTo(northHoop.rimPos) < 0.45 && ballVel.y < 0) {
                     playerScore += 2;
                     document.getElementById('player-score').textContent = playerScore;
                     hasScoredThisShot = true;
                 }
 
-                // Floor Bounce physics (Dampened bounce)
                 if (ball.position.y <= 0.24) {
                     ball.position.y = 0.24;
-                    ballVel.y = -ballVel.y * 0.65; // Bounce energy loss
+                    ballVel.y = -ballVel.y * 0.65;
                     ballVel.x *= 0.8;
                     ballVel.z *= 0.8;
 
-                    if (Math.abs(ballVel.y) < 1.0) ballVel.y = 0; // Stop micro bouncing
+                    if (Math.abs(ballVel.y) < 1.0) ballVel.y = 0;
                 }
 
-                // Manual Pickup Detection (Walk over ball to grab it)
+                // Walk over ball to grab it
                 const distPlayerToBall = player.group.position.distanceTo(ball.position);
                 const distCpuToBall = cpu.group.position.distanceTo(ball.position);
 
