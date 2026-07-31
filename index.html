@@ -3,28 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 1v1 Basketball - Third Person</title>
+    <title>3D 1v1 Basketball - NBA Style</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
-    <div id="game-container">
-        <div id="scoreboard-ui">
-            <div class="score-box">PLAYER: <span id="player-score">0</span></div>
-            <div class="timer-box">3D HOOPS</div>
-            <div class="score-box">OPPONENT: <span id="opp-score">0</span></div>
-        </div>
 
+    <div id="game-container">
         <div id="crosshair"></div>
 
-        <div id="power-bar-container">
-            <div id="power-bar"></div>
+        <div id="scoreboard">
+            <div class="score-box"><span class="team-label">PLAYER</span><span id="player-score">0</span></div>
+            <div class="vs">VS</div>
+            <div class="score-box"><span id="cpu-score">0</span><span class="team-label">CPU</span></div>
+        </div>
+
+        <div id="shot-meter-container">
+            <div id="shot-meter-bar"></div>
+            <div id="shot-sweet-spot"></div>
         </div>
 
         <div id="controls-hint">
-            <b>Controls:</b> WASD to Move | Move Mouse to Aim | Click to Shoot (Harder from deep!)
+            <b>WASD</b> to Move | <b>Mouse</b> to Aim | <b>Click & Hold Left Mouse</b> to Release Shot
         </div>
     </div>
-    <script src="script.js"></script>
+
 </body>
 </html>
