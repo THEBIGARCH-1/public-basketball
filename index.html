@@ -3,31 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2K Style 1v1 Online Basketball</title>
+    <title>3D 1v1 Basketball - Third Person</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
     <div id="game-container">
-        <h1>🏀 1v1 Full-Court Basketball</h1>
-
-        <div id="lobby">
-            <button id="host-btn">Create Game</button>
-            <p>OR</p>
-            <input type="text" id="join-id" placeholder="Enter Game Code">
-            <button id="join-btn">Join Game</button>
-            <div id="status-text">Select an option to play!</div>
+        <div id="scoreboard-ui">
+            <div class="score-box">PLAYER: <span id="player-score">0</span></div>
+            <div class="timer-box">3D HOOPS</div>
+            <div class="score-box">OPPONENT: <span id="opp-score">0</span></div>
         </div>
 
-        <div id="scoreboard" class="hidden">
-            <div>P1 (Red): <span id="p1-score">0</span></div>
-            <div id="match-status">⚡ LIVE 1v1 ⚡</div>
-            <div>P2 (Blue): <span id="p2-score">0</span></div>
+        <div id="crosshair"></div>
+
+        <div id="power-bar-container">
+            <div id="power-bar"></div>
         </div>
 
-        <canvas id="gameCanvas" width="1000" height="500"></canvas>
         <div id="controls-hint">
-            <b>Controls:</b> WASD / Arrows to Move | SPACE to Shoot / Steal
+            <b>Controls:</b> WASD to Move | Move Mouse to Aim | Click to Shoot (Harder from deep!)
         </div>
     </div>
     <script src="script.js"></script>
