@@ -23,14 +23,7 @@ window.addEventListener('load', () => {
     stadiumLight2.position.set(0, 25, -20);
     scene.add(stadiumLight2);
 
-    // Pause UI Element
-    const pauseOverlay = document.createElement('div');
-    pauseOverlay.id = 'pause-menu';
-    pauseOverlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-family:Impact,sans-serif;font-size:48px;letter-spacing:2px;display:none;z-index:100;text-shadow:0 0 10px #000;';
-    pauseOverlay.innerHTML = 'PAUSED<br><span style="font-size:18px;font-family:Arial;">Press P to Resume</span>';
-    document.getElementById('game-container').appendChild(pauseOverlay);
-
-    // --- 2. COURT & HOOPS WITH COLLISION BOUNDS ---
+    // --- 2. COURT & HOOPS ---
     const courtWidth = 28;  
     const courtHeight = 15; 
 
@@ -46,7 +39,6 @@ window.addEventListener('load', () => {
     centerLine.position.set(0, 0, 0);
     scene.add(centerLine);
 
-    // Hoop Setup with Bounding Colliders
     function createHoop(zPos) {
         const group = new THREE.Group();
 
@@ -85,11 +77,10 @@ window.addEventListener('load', () => {
     const northHoop = createHoop(-13.5);
     const southHoop = createHoop(13.5);
 
-    // --- 3. ARTICULATED PLAYER CREATION ---
+    // --- 3. PLAYER & CPU CREATION ---
     function createHumanoidPlayer(shirtColor) {
         const group = new THREE.Group();
 
-        // Torso
         const torso = new THREE.Mesh(
             new THREE.BoxGeometry(0.6, 0.8, 0.3),
             new THREE.MeshStandardMaterial({ color: shirtColor })
@@ -98,7 +89,6 @@ window.addEventListener('load', () => {
         torso.castShadow = true;
         group.add(torso);
 
-        // Head
         const head = new THREE.Mesh(
             new THREE.SphereGeometry(0.25, 16, 16),
             new THREE.MeshStandardMaterial({ color: 0xffcc99 })
@@ -106,24 +96,21 @@ window.addEventListener('load', () => {
         head.position.y = 1.75;
         group.add(head);
 
-        // Helper for limbs
         function createLimb(color) {
             const mesh = new THREE.Mesh(
                 new THREE.BoxGeometry(0.18, 0.7, 0.18),
                 new THREE.MeshStandardMaterial({ color: color })
             );
-            mesh.geometry.translate(0, -0.35, 0); // Rotate from joint
+            mesh.geometry.translate(0, -0.35, 0);
             return mesh;
         }
 
-        // Arms
         const leftArm = createLimb(shirtColor);
         leftArm.position.set(-0.4, 1.4, 0);
 
         const rightArm = createLimb(shirtColor);
         rightArm.position.set(0.4, 1.4, 0);
 
-        // Legs
         const leftLeg = createLimb(0x222222);
         leftLeg.position.set(-0.18, 0.7, 0);
 
@@ -137,8 +124,7 @@ window.addEventListener('load', () => {
             leftArm,
             rightArm,
             leftLeg,
-            rightLeg,
-            torso
+            rightLeg
         };
     }
 
@@ -150,7 +136,6 @@ window.addEventListener('load', () => {
     cpu.group.position.set(0, 0, -2);
     scene.add(cpu.group);
 
-    // Basketball
     const ball = new THREE.Mesh(
         new THREE.SphereGeometry(0.24, 32, 32),
         new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.4 })
@@ -158,7 +143,7 @@ window.addEventListener('load', () => {
     ball.castShadow = true;
     scene.add(ball);
 
-    // --- 4. GAME STATE & VARIABLES ---
+    // --- 4. GAME STATE VARIABLES ---
     let playerScore = 0;
     let isLocked = false;
     let isPaused = false;
@@ -176,7 +161,7 @@ window.addEventListener('load', () => {
 
     let animTime = 0;
 
-    // --- 5. INPUT & PAUSE CONTROLS ---
+    // --- 5. CONTROLS & PAUSE MECHANICS ---
     document.body.addEventListener('click', () => {
         if (!isLocked && !isPaused) document.body.requestPointerLock();
     });
@@ -195,10 +180,9 @@ window.addEventListener('load', () => {
     window.addEventListener('keydown', (e) => {
         keys[e.code] = true;
 
-        // Toggle Pause with 'P'
         if (e.code === 'KeyP') {
             isPaused = !isPaused;
-            pauseOverlay.style.display = isPaused ? 'block' : 'none';
+            document.getElementById('pause-menu').style.display = isPaused ? 'block' : 'none';
             if (isPaused && document.pointerLockElement) {
                 document.exitPointerLock();
             }
@@ -223,7 +207,7 @@ window.addEventListener('load', () => {
         }
     });
 
-    // --- 6. SHOOTING & COLLISION MECHANICS ---
+    // --- 6. PHYSICS & SHOOTING ENGINE ---
     function releaseShot() {
         isBallInAir = true;
 
@@ -244,7 +228,6 @@ window.addEventListener('load', () => {
     function checkRimAndBackboardCollisions() {
         const ballRadius = 0.24;
 
-        // Rim Collision
         const distToRim = ball.position.distanceTo(northHoop.rimPos);
         if (Math.abs(distToRim - northHoop.rimRadius) < ballRadius + 0.05 && Math.abs(ball.position.y - northHoop.rimPos.y) < 0.2) {
             ballVel.x *= -0.6;
@@ -252,9 +235,8 @@ window.addEventListener('load', () => {
             ballVel.y *= 0.5;
         }
 
-        // Backboard Bounce
         if (northHoop.backboardBox.intersectsSphere(new THREE.Sphere(ball.position, ballRadius))) {
-            ballVel.z = Math.abs(ballVel.z) * 0.7; // Bounce forward off backboard
+            ballVel.z = Math.abs(ballVel.z) * 0.7;
         }
     }
 
@@ -269,23 +251,19 @@ window.addEventListener('load', () => {
         cpu.group.position.set(0, 0, -2);
     }
 
-    // --- 7. ANIMATION HELPERS ---
     function animateCharacter(char, isMoving, isCharging, time) {
         if (isCharging) {
-            // Raised Shooting Arms Animation
             char.rightArm.rotation.x = -Math.PI + 0.3;
             char.leftArm.rotation.x = -Math.PI + 0.6;
             char.rightArm.rotation.z = -0.3;
             char.leftArm.rotation.z = 0.3;
         } else if (isMoving) {
-            // Walking Limb Swing Animation
             const swing = Math.sin(time * 10) * 0.6;
             char.leftLeg.rotation.x = swing;
             char.rightLeg.rotation.x = -swing;
             char.leftArm.rotation.x = -swing * 0.8;
             char.rightArm.rotation.x = swing * 0.8;
         } else {
-            // Idle Limb Stance
             char.leftLeg.rotation.x = 0;
             char.rightLeg.rotation.x = 0;
             char.leftArm.rotation.x = 0;
@@ -295,7 +273,7 @@ window.addEventListener('load', () => {
         }
     }
 
-    // --- 8. MAIN GAME LOOP ---
+    // --- 7. ANIMATION LOOP ---
     const clock = new THREE.Clock();
 
     function animate() {
@@ -306,7 +284,6 @@ window.addEventListener('load', () => {
         if (isLocked && !isPaused) {
             animTime += delta;
 
-            // Player Movement
             const speed = 6.0;
             const moveDir = new THREE.Vector3();
 
@@ -322,16 +299,13 @@ window.addEventListener('load', () => {
 
             player.group.position.addScaledVector(moveDir, speed * delta);
 
-            // Facing Direction
             if (isMoving) {
                 player.group.rotation.y = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
             }
 
-            // Court Constraints
             player.group.position.x = Math.max(-courtHeight / 2 + 0.5, Math.min(courtHeight / 2 - 0.5, player.group.position.x));
             player.group.position.z = Math.max(-courtWidth / 2 + 0.5, Math.min(courtWidth / 2 - 0.5, player.group.position.z));
 
-            // Camera Tracking
             const camOffset = new THREE.Vector3(0, 2.2, 4.5);
             camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.yaw);
             camera.position.copy(player.group.position).add(camOffset);
@@ -342,7 +316,6 @@ window.addEventListener('load', () => {
             lookTarget.y += Math.sin(cameraRotation.pitch) * 5;
             camera.lookAt(lookTarget);
 
-            // CPU AI Defense Tracking
             const cpuTargetZ = player.group.position.z - 2.0;
             const cpuMoveX = (player.group.position.x - cpu.group.position.x) * 3.0 * delta;
             const cpuMoveZ = (cpuTargetZ - cpu.group.position.z) * 2.0 * delta;
@@ -352,10 +325,8 @@ window.addEventListener('load', () => {
             const isCpuMoving = Math.abs(cpuMoveX) > 0.01 || Math.abs(cpuMoveZ) > 0.01;
             animateCharacter(cpu, isCpuMoving, false, animTime);
 
-            // Animate Player Limbs
             animateCharacter(player, isMoving, isChargingShot, animTime);
 
-            // Shot Power Meter
             if (isChargingShot) {
                 shotPower += shotPowerDir * 120 * delta;
                 if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
@@ -363,27 +334,22 @@ window.addEventListener('load', () => {
                 document.getElementById('shot-meter-bar').style.width = `${shotPower}%`;
             }
 
-            // Dribbling & Ball Physics
             if (!isBallInAir) {
-                // Active Dribbling Math (Bouncing near hand height)
                 const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                 const handOffset = new THREE.Vector3(0.4, 0, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
 
                 ball.position.copy(player.group.position).add(handOffset);
                 ball.position.y = bounceHeight;
             } else {
-                // In-Flight Trajectory
                 ballVel.y += gravity * delta;
                 ball.position.addScaledVector(ballVel, delta);
 
                 checkRimAndBackboardCollisions();
 
-                // Swish / Score Condition
                 if (ball.position.distanceTo(northHoop.rimPos) < 0.45 && ballVel.y < 0) {
                     resetPossession(true);
                 }
 
-                // Floor Bounce / Missed Shot Reset
                 if (ball.position.y <= 0.24) {
                     resetPossession(false);
                 }
