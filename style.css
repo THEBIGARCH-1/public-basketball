@@ -4,7 +4,7 @@
     padding: 0;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none; /* Prevents mobile browser pinch-zoom and scrolling */
+    touch-action: none;
 }
 
 body, html {
@@ -21,7 +21,7 @@ body, html {
     height: 100vh;
 }
 
-/* Crosshair Reticle */
+/* Reticle */
 #crosshair {
     position: absolute;
     top: 50%;
@@ -36,7 +36,7 @@ body, html {
     z-index: 10;
 }
 
-/* Scoreboard Overlay */
+/* Scoreboard */
 #scoreboard {
     position: absolute;
     top: 15px;
@@ -103,7 +103,7 @@ body, html {
     background: rgba(0, 230, 118, 0.8);
 }
 
-/* Touch UI Overlay */
+/* Touch Controls */
 #touch-controls {
     position: absolute;
     top: 0;
@@ -111,10 +111,9 @@ body, html {
     width: 100%;
     height: 100%;
     z-index: 20;
-    pointer-events: none; /* Allows touch events on specific children */
+    pointer-events: none;
 }
 
-/* Joystick (Left) */
 #joystick-zone {
     position: absolute;
     bottom: 30px;
@@ -146,28 +145,44 @@ body, html {
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
 
-/* Action Button (Right) */
 #action-zone {
     position: absolute;
-    bottom: 35px;
-    right: 35px;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
     pointer-events: auto;
 }
 
 #shoot-btn {
-    width: 80px;
-    height: 80px;
+    width: 75px;
+    height: 75px;
     background: radial-gradient(circle, #ff9800, #e65100);
     border: 3px solid #fff;
     border-radius: 50%;
     color: white;
     font-family: 'Impact', sans-serif;
-    font-size: 18px;
+    font-size: 16px;
     letter-spacing: 1px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    active {
-        transform: scale(0.95);
-    }
+}
+
+.skill-btn {
+    width: 60px;
+    height: 60px;
+    background: rgba(33, 150, 243, 0.85);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: white;
+    font-family: 'Impact', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+#dunk-btn {
+    background: rgba(156, 39, 176, 0.85);
 }
 
 /* Controls Hint UI */
@@ -187,7 +202,7 @@ body, html {
     white-space: nowrap;
 }
 
-/* Pause Screen UI */
+/* Pause UI */
 #pause-menu {
     position: absolute;
     top: 50%;
