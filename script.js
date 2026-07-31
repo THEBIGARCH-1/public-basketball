@@ -7,20 +7,21 @@ let score = 0;
 let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 let dragCurrent = { x: 0, y: 0 };
+let scoreMessageTimer = 0; // Timer to display "SCORE!" message
 
 // Ball properties
-const ballDefault = { x: 150, y: 380, radius: 18, vx: 0, vy: 0, isShot: false };
+const ballDefault = { x: 150, y: 380, radius: 16, vx: 0, vy: 0, isShot: false };
 let ball = { ...ballDefault };
 
-// Hoop & Backboard dimensions
-const rim = { x: 620, y: 220, width: 60, height: 8 };
-const backboard = { x: 680, y: 140, width: 10, height: 100 };
+// Rim & Backboard setup
+const rim = { x: 590, y: 220, width: 70, height: 10, nodeRadius: 6 };
+const backboard = { x: 660, y: 130, width: 12, height: 110 };
 
 // Physics constants
-const gravity = 0.45;
-const bounceDamping = 0.65; // Speed loss on collision
+const gravity = 0.42;
+const bounceDamping = 0.7; // Elasticity of bounce
 
-// Event Listeners
+// Event Listeners for Drag-and-Shoot
 canvas.addEventListener('mousedown', (e) => {
     if (ball.isShot) return;
     const rect = canvas.getBoundingClientRect();
@@ -28,7 +29,7 @@ canvas.addEventListener('mousedown', (e) => {
     const mouseY = e.clientY - rect.top;
 
     const dist = Math.hypot(mouseX - ball.x, mouseY - ball.y);
-    if (dist < ball.radius * 2) {
+    if (dist < ball.radius * 2.5) {
         isDragging = true;
         dragStart = { x: mouseX, y: mouseY };
         dragCurrent = { x: mouseX, y: mouseY };
@@ -57,57 +58,62 @@ function resetBall() {
     ball = { ...ballDefault };
 }
 
-// Collisions with Backboard and Rim Points
+// Solid Rim and Backboard Collisions
 function handleCollisions() {
-    // 1. Backboard Collision (vertical front face)
+    // 1. Backboard Collision
     if (
         ball.x + ball.radius > backboard.x &&
         ball.x - ball.radius < backboard.x + backboard.width &&
-        ball.y > backboard.y &&
-        ball.y < backboard.y + backboard.height
+        ball.y + ball.radius > backboard.y &&
+        ball.y - ball.radius < backboard.y + backboard.height
     ) {
         ball.x = backboard.x - ball.radius;
-        ball.vx = -ball.vx * bounceDamping; // Reverse horizontal velocity
+        ball.vx = -ball.vx * bounceDamping;
     }
 
-    // Rim collision points (Front Rim Edge and Back Rim Edge)
-    const rimPoints = [
-        { x: rim.x, y: rim.y },                   // Front edge of rim
-        { x: rim.x + rim.width, y: rim.y }        // Back edge of rim
+    // 2. Front and Back Rim Nodes (Circular collision boundaries)
+    const rimNodes = [
+        { x: rim.x, y: rim.y },                  // Front of ring
+        { x: rim.x + rim.width, y: rim.y }       // Back of ring
     ];
 
-    rimPoints.forEach(point => {
-        const dx = ball.x - point.x;
-        const dy = ball.y - point.y;
-        const dist = Math.hypot(dx, dy);
+    rimNodes.forEach(node => {
+        const dx = ball.x - node.x;
+        const dy = ball.y - node.y;
+        const distance = Math.hypot(dx, dy);
+        const minDistance = ball.radius + rim.nodeRadius;
 
-        // If ball hits a rim edge point
-        if (dist < ball.radius) {
-            // Calculate bounce angle
+        if (distance < minDistance) {
+            // Angle between ball and rim node
             const angle = Math.atan2(dy, dx);
-            const speed = Math.hypot(ball.vx, ball.vy) * bounceDamping;
 
-            ball.vx = Math.cos(angle) * speed;
-            ball.vy = Math.sin(angle) * speed;
+            // Reposition ball outside collision node
+            ball.x = node.x + Math.cos(angle) * minDistance;
+            ball.y = node.y + Math.sin(angle) * minDistance;
 
-            // Push ball slightly out of collision to prevent sticking
-            ball.x = point.x + Math.cos(angle) * ball.radius;
-            ball.y = point.y + Math.sin(angle) * ball.radius;
+            // Reflect velocity vector
+            const normalX = Math.cos(angle);
+            const normalY = Math.sin(angle);
+            const dotProduct = ball.vx * normalX + ball.vy * normalY;
+
+            ball.vx = (ball.vx - 2 * dotProduct * normalX) * bounceDamping;
+            ball.vy = (ball.vy - 2 * dotProduct * normalY) * bounceDamping;
         }
     });
 }
 
-// Check if ball passes cleanly through the hoop
+// Check Score Condition
 function checkScore() {
     if (
-        ball.x > rim.x + 10 &&
-        ball.x < rim.x + rim.width - 10 &&
+        ball.x > rim.x + 8 &&
+        ball.x < rim.x + rim.width - 8 &&
         ball.y > rim.y &&
-        ball.y < rim.y + rim.height + 10 &&
-        ball.vy > 0 // Ball must be moving downward
+        ball.y < rim.y + rim.height + 12 &&
+        ball.vy > 0 // Ball must be falling down
     ) {
         score += 1;
         scoreEl.textContent = score;
+        scoreMessageTimer = 45; // Show "SCORE!" message for 45 frames
         resetBall();
     }
 }
@@ -124,7 +130,14 @@ function update() {
     ctx.fillStyle = '#ff5722';
     ctx.fillRect(rim.x, rim.y, rim.width, rim.height);
 
-    // Update Physics if ball is in air
+    // Draw Front Rim Node Knob
+    ctx.beginPath();
+    ctx.arc(rim.x, rim.y, rim.nodeRadius, 0, Math.PI * 2);
+    ctx.arc(rim.x + rim.width, rim.y, rim.nodeRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#d84315';
+    ctx.fill();
+
+    // Physics Step
     if (ball.isShot) {
         ball.x += ball.vx;
         ball.y += ball.vy;
@@ -133,13 +146,13 @@ function update() {
         handleCollisions();
         checkScore();
 
-        // Reset if ball leaves screen bounds
+        // Reset if ball goes off-screen
         if (ball.y > canvas.height + 50 || ball.x > canvas.width + 50 || ball.x < -50) {
             resetBall();
         }
     }
 
-    // Draw Aiming Trajectory Line
+    // Draw Aim Line
     if (isDragging) {
         ctx.beginPath();
         ctx.moveTo(ball.x, ball.y);
@@ -148,7 +161,8 @@ function update() {
             ball.y + (dragStart.y - dragCurrent.y)
         );
         ctx.strokeStyle = '#ffffff';
-        ctx.setLineDash([5, 5]);
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.setLineDash([]);
     }
@@ -161,6 +175,15 @@ function update() {
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#000000';
     ctx.stroke();
+
+    // Render "SCORE!" text popup
+    if (scoreMessageTimer > 0) {
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillStyle = '#4caf50';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCORE! 🏀', canvas.width / 2, 120);
+        scoreMessageTimer--;
+    }
 
     requestAnimationFrame(update);
 }
