@@ -3,29 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1v1 Online Basketball Arcade</title>
+    <title>2K Style 1v1 Online Basketball</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="game-container">
-        <h1>🏀 1v1 Online Basketball</h1>
+        <h1>🏀 1v1 Full-Court Basketball</h1>
 
         <div id="lobby">
-            <button id="host-btn">Create Match</button>
+            <button id="host-btn">Create Game</button>
             <p>OR</p>
-            <input type="text" id="join-id" placeholder="Enter Friend's Game Code">
-            <button id="join-btn">Join Match</button>
-            <div id="status-text">Choose an option to start!</div>
+            <input type="text" id="join-id" placeholder="Enter Game Code">
+            <button id="join-btn">Join Game</button>
+            <div id="status-text">Select an option to play!</div>
         </div>
 
         <div id="scoreboard" class="hidden">
-            <div>You: <span id="my-score">0</span></div>
-            <div id="match-status">Connecting...</div>
-            <div>Opponent: <span id="opponent-score">0</span></div>
+            <div>P1 (Red): <span id="p1-score">0</span></div>
+            <div id="match-status">⚡ LIVE 1v1 ⚡</div>
+            <div>P2 (Blue): <span id="p2-score">0</span></div>
         </div>
 
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <canvas id="gameCanvas" width="1000" height="500"></canvas>
+        <div id="controls-hint">
+            <b>Controls:</b> WASD / Arrows to Move | SPACE to Shoot / Steal
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
