@@ -3,6 +3,8 @@
     margin: 0;
     padding: 0;
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: none; /* Prevents mobile browser pinch-zoom and scrolling */
 }
 
 body, html {
@@ -37,14 +39,14 @@ body, html {
 /* Scoreboard Overlay */
 #scoreboard {
     position: absolute;
-    top: 20px;
+    top: 15px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 20px;
     background: rgba(0, 0, 0, 0.85);
-    padding: 10px 25px;
+    padding: 8px 20px;
     border-radius: 12px;
     border: 2px solid #ff9800;
     color: #fff;
@@ -55,29 +57,29 @@ body, html {
     display: flex;
     flex-direction: column;
     align-items: center;
-    font-size: 28px;
+    font-size: 24px;
     color: #ff9800;
 }
 
 .team-label {
-    font-size: 12px;
+    font-size: 10px;
     color: #aaa;
     letter-spacing: 1px;
 }
 
 .vs {
-    font-size: 16px;
+    font-size: 14px;
     color: #888;
 }
 
 /* Shot Timing Bar */
 #shot-meter-container {
     position: absolute;
-    bottom: 80px;
+    bottom: 120px;
     left: 50%;
     transform: translateX(-50%);
-    width: 200px;
-    height: 20px;
+    width: 180px;
+    height: 18px;
     background: rgba(0, 0, 0, 0.7);
     border: 2px solid #fff;
     border-radius: 10px;
@@ -101,19 +103,88 @@ body, html {
     background: rgba(0, 230, 118, 0.8);
 }
 
+/* Touch UI Overlay */
+#touch-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    pointer-events: none; /* Allows touch events on specific children */
+}
+
+/* Joystick (Left) */
+#joystick-zone {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 120px;
+    height: 120px;
+    pointer-events: auto;
+}
+
+#joystick-base {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+}
+
+#joystick-stick {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    margin-top: -25px;
+    margin-left: -25px;
+    background: rgba(255, 152, 0, 0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* Action Button (Right) */
+#action-zone {
+    position: absolute;
+    bottom: 35px;
+    right: 35px;
+    pointer-events: auto;
+}
+
+#shoot-btn {
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, #ff9800, #e65100);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    color: white;
+    font-family: 'Impact', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    active {
+        transform: scale(0.95);
+    }
+}
+
 /* Controls Hint UI */
 #controls-hint {
     position: absolute;
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
     color: #fff;
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     background: rgba(0, 0, 0, 0.6);
-    padding: 6px 16px;
-    border-radius: 20px;
+    padding: 4px 12px;
+    border-radius: 15px;
     z-index: 10;
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 /* Pause Screen UI */
@@ -124,7 +195,7 @@ body, html {
     transform: translate(-50%, -50%);
     color: #fff;
     font-family: Impact, sans-serif;
-    font-size: 48px;
+    font-size: 44px;
     letter-spacing: 2px;
     display: none;
     z-index: 100;
