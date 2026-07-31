@@ -1,326 +1,252 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// --- 1. THREE.JS SCENE SETUP ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1c29);
+scene.fog = new THREE.FogExp2(0x1a1c29, 0.015);
 
-// UI Elements
-const hostBtn = document.getElementById('host-btn');
-const joinBtn = document.getElementById('join-btn');
-const joinInput = document.getElementById('join-id');
-const statusText = document.getElementById('status-text');
-const scoreboard = document.getElementById('scoreboard');
-const lobby = document.getElementById('lobby');
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.getElementById('game-container').appendChild(renderer.domElement);
 
-// Game State
-let peer, conn;
-let isHost = false;
-let myRole = 'p1'; // 'p1' or 'p2'
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
 
-// Score State
-let scores = { p1: 0, p2: 0 };
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 40, 20);
+dirLight.castShadow = true;
+scene.add(dirLight);
 
-// Controls Input
+// --- 2. COURT & HOOP GEOMETRY ---
+
+// Hardwood Court
+const courtGeo = new THREE.PlaneGeometry(30, 60);
+const courtMat = new THREE.MeshStandardMaterial({ color: 0xd29e62, roughness: 0.4 });
+const court = new THREE.Mesh(courtGeo, courtMat);
+court.rotation.x = -Math.PI / 2;
+court.receiveShadow = true;
+scene.add(court);
+
+// Hoop Structure
+const hoopGroup = new THREE.Group();
+hoopGroup.position.set(0, 0, -26);
+
+// Pole & Backboard
+const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 7), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+pole.position.set(0, 3.5, -1);
+hoopGroup.add(pole);
+
+const backboard = new THREE.Mesh(new THREE.BoxGeometry(4, 2.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+backboard.position.set(0, 5.5, 0);
+hoopGroup.add(backboard);
+
+// Rim
+const rimTargetPos = new THREE.Vector3(0, 4.5, -25.2);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.08, 16, 32), new THREE.MeshStandardMaterial({ color: 0xff5722 }));
+rim.rotation.x = Math.PI / 2;
+rim.position.set(0, 4.5, 0.8);
+hoopGroup.add(rim);
+
+scene.add(hoopGroup);
+
+// --- 3. PLAYER & ANIMATION SETUP ---
+
+function createCharacter(color) {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: color });
+
+    // Torso
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 1.4), mat);
+    torso.position.y = 1.4;
+    torso.castShadow = true;
+    group.add(torso);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffcc99 }));
+    head.position.y = 2.4;
+    group.add(head);
+
+    // Limbs (For Running & Dribbling Animations)
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), mat);
+    legL.position.set(-0.25, 0.5, 0);
+    const legR = legL.clone();
+    legR.position.set(0.25, 0.5, 0);
+
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.9, 0.2), mat);
+    armL.position.set(-0.55, 1.5, 0);
+    const armR = armL.clone();
+    armR.position.set(0.55, 1.5, 0);
+
+    group.add(legL, legR, armL, armR);
+
+    return { group, torso, legL, legR, armL, armR };
+}
+
+const player = createCharacter(0xe53935);
+scene.add(player.group);
+player.group.position.set(0, 0, 10);
+
+// Basketball
+const ballGeo = new THREE.SphereGeometry(0.35, 32, 32);
+const ballMat = new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.5 });
+const ball = new THREE.Mesh(ballGeo, ballMat);
+ball.castShadow = true;
+scene.add(ball);
+
+// --- 4. GAME VARIABLES & CONTROLS ---
+
+let playerScore = 0;
+let oppScore = 0;
+
+let ballState = 'dribbling'; // 'dribbling', 'shot'
+let ballVel = new THREE.Vector3();
+let animTime = 0;
+
 const keys = {};
+let mouseX = 0, mouseY = 0;
 
-// Game Entities
-const p1 = { x: 150, y: 250, radius: 18, color: '#e53935', speed: 4 };
-const p2 = { x: 850, y: 250, radius: 18, color: '#1e88e5', speed: 4 };
-
-// Ball State
-const ball = {
-    x: 500,
-    y: 250,
-    radius: 10,
-    color: '#ff9800',
-    holder: 'p1', // 'p1', 'p2', or null (in air)
-    vx: 0,
-    vy: 0,
-    isShooting: false,
-    targetHoop: null
-};
-
-// Hoops (Top-Down Positions)
-const leftHoop = { x: 50, y: 250, radius: 15 };
-const rightHoop = { x: 950, y: 250, radius: 15 };
-
-// --- MULTIPLAYER SETUP (PEERJS) ---
-
-hostBtn.addEventListener('click', () => {
-    peer = new Peer();
-    isHost = true;
-    myRole = 'p1';
-
-    peer.on('open', (id) => {
-        statusText.innerHTML = `Game Code: <b>${id}</b><br>Share this with Player 2!`;
-    });
-
-    peer.on('connection', (connection) => {
-        conn = connection;
-        setupConnection();
-    });
+// Mouse Control Pointer Lock for Aiming
+window.addEventListener('mousemove', (e) => {
+    mouseX -= e.movementX * 0.003;
+    mouseY -= e.movementY * 0.003;
+    mouseY = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, mouseY));
 });
 
-joinBtn.addEventListener('click', () => {
-    const code = joinInput.value.trim();
-    if (!code) return alert('Please enter a game code!');
-
-    peer = new Peer();
-    isHost = false;
-    myRole = 'p2';
-
-    peer.on('open', () => {
-        conn = peer.connect(code);
-        setupConnection();
-    });
+document.addEventListener('click', () => {
+    document.body.requestPointerLock();
 });
 
-function setupConnection() {
-    conn.on('open', () => {
-        lobby.classList.add('hidden');
-        scoreboard.classList.remove('hidden');
-    });
+window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-    conn.on('data', (data) => {
-        if (data.type === 'sync') {
-            if (!isHost) {
-                p1.x = data.p1.x;
-                p1.y = data.p1.y;
-                ball.x = data.ball.x;
-                ball.y = data.ball.y;
-                ball.holder = data.ball.holder;
-                scores = data.scores;
-                updateScoreboard();
-            } else {
-                p2.x = data.p2.x;
-                p2.y = data.p2.y;
-            }
-        } else if (data.type === 'action') {
-            handlePlayerAction(data.role, data.action);
-        }
-    });
+// Click to Shoot
+window.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && ballState === 'dribbling') {
+        shootBall();
+    }
+});
+
+// --- 5. SHOOTING & ACCURACY PHYSICS ---
+
+function shootBall() {
+    ballState = 'shot';
+
+    const pPos = player.group.position;
+    const distanceToHoop = pPos.distanceTo(rimTargetPos);
+
+    // Aim direction based on camera angle
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+
+    // Deep Shot Penalty (Half-Court Shot Accuracy Drop)
+    let inaccuracyScale = 0;
+    if (distanceToHoop > 20) {
+        // High penalty from half court (adds random spray)
+        inaccuracyScale = (distanceToHoop - 20) * 0.08;
+    }
+
+    const sprayX = (Math.random() - 0.5) * inaccuracyScale;
+    const sprayY = (Math.random() - 0.5) * inaccuracyScale;
+
+    // Shot Power Calculation
+    const forwardPower = 12 + distanceToHoop * 0.45;
+    const upwardPower = 8 + distanceToHoop * 0.25;
+
+    ballVel.set(
+        dir.x * forwardPower + sprayX,
+        upwardPower + sprayY,
+        dir.z * forwardPower
+    );
 }
 
-function sendNetworkData() {
-    if (!conn || !conn.open) return;
+function resetBall() {
+    ballState = 'dribbling';
+    ballVel.set(0, 0, 0);
+}
 
-    if (isHost) {
-        conn.send({
-            type: 'sync',
-            p1: { x: p1.x, y: p1.y },
-            p2: { x: p2.x, y: p2.y },
-            ball: { x: ball.x, y: ball.y, holder: ball.holder },
-            scores: scores
-        });
+// --- 6. GAME LOOP & ANIMATION ---
+
+const gravity = -22;
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    animTime += delta * 10;
+
+    // --- Movement Logic ---
+    const moveSpeed = 8 * delta;
+    let isMoving = false;
+
+    // Calculate move direction relative to camera facing angle
+    const forward = new THREE.Vector3(Math.sin(mouseX), 0, Math.cos(mouseX)).negate();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate();
+
+    if (keys['w']) { player.group.position.addScaledVector(forward, moveSpeed); isMoving = true; }
+    if (keys['s']) { player.group.position.addScaledVector(forward, -moveSpeed); isMoving = true; }
+    if (keys['a']) { player.group.position.addScaledVector(right, -moveSpeed); isMoving = true; }
+    if (keys['d']) { player.group.position.addScaledVector(right, moveSpeed); isMoving = true; }
+
+    // Face Player in Camera Direction
+    player.group.rotation.y = mouseX;
+
+    // --- Procedural Running & Dribbling Animations ---
+    if (isMoving) {
+        player.legL.rotation.x = Math.sin(animTime) * 0.6;
+        player.legR.rotation.x = -Math.sin(animTime) * 0.6;
     } else {
-        conn.send({
-            type: 'sync',
-            p2: { x: p2.x, y: p2.y }
-        });
+        player.legL.rotation.x = 0;
+        player.legR.rotation.x = 0;
     }
-}
 
-function sendAction(action) {
-    if (conn && conn.open) {
-        conn.send({ type: 'action', role: myRole, action: action });
-    }
-}
+    // Ball & Dribble Animation
+    if (ballState === 'dribbling') {
+        const bounceY = Math.abs(Math.sin(animTime * 1.5)) * 0.8;
+        const handPos = player.group.position.clone();
 
-// --- INPUT LISTENERS ---
+        // Right hand dribbling position
+        handPos.x += Math.cos(mouseX) * 0.6;
+        handPos.z += Math.sin(mouseX) * 0.6;
+        handPos.y = 0.35 + bounceY;
 
-window.addEventListener('keydown', (e) => {
-    keys[e.key.toLowerCase()] = true;
-
-    if (e.code === 'Space') {
-        executeShootOrSteal(myRole);
-        sendAction('space');
-    }
-});
-
-window.addEventListener('keyup', (e) => {
-    keys[e.key.toLowerCase()] = false;
-});
-
-// --- GAMEPLAY MECHANICS ---
-
-function handlePlayerAction(role, action) {
-    if (action === 'space') {
-        executeShootOrSteal(role);
-    }
-}
-
-function executeShootOrSteal(role) {
-    const player = role === 'p1' ? p1 : p2;
-    const opponent = role === 'p1' ? p2 : p1;
-
-    // Shooting
-    if (ball.holder === role) {
-        ball.holder = null;
-        ball.isShooting = true;
-
-        // P1 shoots right, P2 shoots left
-        const target = role === 'p1' ? rightHoop : leftHoop;
-        const dx = target.x - ball.x;
-        const dy = target.y - ball.y;
-        const dist = Math.hypot(dx, dy);
-
-        ball.vx = (dx / dist) * 7;
-        ball.vy = (dy / dist) * 7;
-        ball.targetHoop = target;
+        ball.position.copy(handPos);
+        player.armR.rotation.x = -bounceY * 0.8;
     } 
-    // Stealing
-    else if (ball.holder === (role === 'p1' ? 'p2' : 'p1')) {
-        const dist = Math.hypot(player.x - opponent.x, player.y - opponent.y);
-        if (dist < 45) { // Steal radius
-            ball.holder = role;
-        }
-    }
-}
+    // Shot Flight Physics
+    else if (ballState === 'shot') {
+        ballVel.y += gravity * delta;
+        ball.position.addScaledVector(ballVel, delta);
 
-function resetAfterScore() {
-    p1.x = 200; p1.y = 250;
-    p2.x = 800; p2.y = 250;
-    ball.x = 500; ball.y = 250;
-    ball.vx = 0; ball.vy = 0;
-    ball.isShooting = false;
-    ball.holder = 'p1';
-    updateScoreboard();
-}
-
-function updateScoreboard() {
-    document.getElementById('p1-score').textContent = scores.p1;
-    document.getElementById('p2-score').textContent = scores.p2;
-}
-
-// --- PHYSICS AND LOGIC UPDATES ---
-
-function updateGame() {
-    // Local player movement
-    const myPlayer = myRole === 'p1' ? p1 : p2;
-
-    if (keys['a'] || keys['arrowleft']) myPlayer.x -= myPlayer.speed;
-    if (keys['d'] || keys['arrowright']) myPlayer.x += myPlayer.speed;
-    if (keys['w'] || keys['arrowup']) myPlayer.y -= myPlayer.speed;
-    if (keys['s'] || keys['arrowdown']) myPlayer.y += myPlayer.speed;
-
-    // Boundaries
-    myPlayer.x = Math.max(p1.radius, Math.min(canvas.width - p1.radius, myPlayer.x));
-    myPlayer.y = Math.max(p1.radius, Math.min(canvas.height - p1.radius, myPlayer.y));
-
-    // Ball movement & updates (Handled by Host)
-    if (isHost) {
-        if (ball.holder === 'p1') {
-            ball.x = p1.x + 12;
-            ball.y = p1.y;
-        } else if (ball.holder === 'p2') {
-            ball.x = p2.x - 12;
-            ball.y = p2.y;
-        } else if (ball.isShooting) {
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-
-            // Check hoop collision
-            const distToHoop = Math.hypot(ball.x - ball.targetHoop.x, ball.y - ball.targetHoop.y);
-            if (distToHoop < 12) {
-                if (ball.targetHoop === rightHoop) scores.p1 += 2;
-                else scores.p2 += 2;
-                resetAfterScore();
-            }
-
-            // Out of bounds missed shot reset
-            if (ball.x < 0 || ball.x > canvas.width || ball.y < 0 || ball.y > canvas.height) {
-                ball.isShooting = false;
-                ball.holder = null;
-            }
-        } else {
-            // Loose ball pickup
-            if (Math.hypot(p1.x - ball.x, p1.y - ball.y) < p1.radius + ball.radius) ball.holder = 'p1';
-            if (Math.hypot(p2.x - ball.x, p2.y - ball.y) < p2.radius + ball.radius) ball.holder = 'p2';
+        // Check Score Collision with Rim
+        if (ball.position.distanceTo(rimTargetPos) < 0.9 && ballVel.y < 0) {
+            playerScore += 2;
+            document.getElementById('player-score').textContent = playerScore;
+            resetBall();
         }
 
-        sendNetworkData();
-    } else {
-        sendNetworkData();
+        // Bounce/Reset on ground hit
+        if (ball.position.y <= 0.35) {
+            resetBall();
+        }
     }
+
+    // --- Third Person Camera Positioning ---
+    const camOffset = new THREE.Vector3(0, 3.5, 7.5); // Behind & Above Player
+    camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseX);
+
+    camera.position.copy(player.group.position).add(camOffset);
+    camera.position.y += Math.sin(mouseY) * 3; // Vertical tilt angle
+    camera.lookAt(player.group.position.x, player.group.position.y + 2, player.group.position.y - 5);
+
+    renderer.render(scene, camera);
 }
 
-// --- RENDER COURT & PLAYERS ---
+// Window Resize Handling
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-function drawCourt() {
-    // Clear court floor
-    ctx.fillStyle = '#d29e62';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
-
-    // Center Line & Circle
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Key Areas (Paint)
-    ctx.strokeRect(0, 150, 150, 200);
-    ctx.strokeRect(850, 150, 150, 200);
-
-    // Three-point arcs
-    ctx.beginPath();
-    ctx.arc(50, 250, 180, -Math.PI / 2, Math.PI / 2);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(950, 250, 180, Math.PI / 2, -Math.PI / 2);
-    ctx.stroke();
-
-    // Hoops
-    ctx.fillStyle = '#ff5722';
-    ctx.beginPath();
-    ctx.arc(leftHoop.x, leftHoop.y, leftHoop.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(rightHoop.x, rightHoop.y, rightHoop.radius, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawCourt();
-
-    // Draw P1 (Red)
-    ctx.fillStyle = p1.color;
-    ctx.beginPath();
-    ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-
-    // Draw P2 (Blue)
-    ctx.fillStyle = p2.color;
-    ctx.beginPath();
-    ctx.arc(p2.x, p2.y, p2.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-
-    // Draw Ball
-    ctx.fillStyle = ball.color;
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-}
-
-function loop() {
-    updateGame();
-    render();
-    requestAnimationFrame(loop);
-}
-
-loop();
+animate();
