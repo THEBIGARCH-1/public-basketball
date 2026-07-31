@@ -19,7 +19,7 @@ body, html {
     height: 100vh;
 }
 
-/* Reticle / Aim Cursor */
+/* Crosshair Reticle */
 #crosshair {
     position: absolute;
     top: 50%;
@@ -34,7 +34,7 @@ body, html {
     z-index: 10;
 }
 
-/* Scoreboard */
+/* Scoreboard Overlay */
 #scoreboard {
     position: absolute;
     top: 20px;
@@ -70,7 +70,7 @@ body, html {
     color: #888;
 }
 
-/* Shot Timing Meter */
+/* Shot Timing Bar */
 #shot-meter-container {
     position: absolute;
     bottom: 80px;
@@ -101,7 +101,7 @@ body, html {
     background: rgba(0, 230, 118, 0.8);
 }
 
-/* Controls Hint Overlay */
+/* Controls Hint UI */
 #controls-hint {
     position: absolute;
     bottom: 20px;
@@ -110,13 +110,13 @@ body, html {
     color: #fff;
     font-family: Arial, sans-serif;
     font-size: 14px;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     padding: 6px 16px;
     border-radius: 20px;
     z-index: 10;
 }
 
-/* Pause UI */
+/* Pause Screen UI */
 #pause-menu {
     position: absolute;
     top: 50%;
