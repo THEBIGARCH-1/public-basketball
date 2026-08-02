@@ -165,7 +165,8 @@ window.addEventListener('load', () => {
     ball.castShadow = true;
     scene.add(ball);
 
-    // --- 4. GAME STATE & HYBRID CONTROLS ---
+    // --- 4. GAME STATE & MODE TOGGLE ---
+    let controlMode = 'pc'; // 'pc' or 'mobile'
     let playerScore = 0;
     let isLocked = false;
     let isPaused = false;
@@ -181,7 +182,6 @@ window.addEventListener('load', () => {
     let shotPower = 0;
     let shotPowerDir = 1;
 
-    // Special moves state
     let isTrickDribbling = false;
     let trickDribbleTime = 0;
     let isDunking = false;
@@ -196,19 +196,45 @@ window.addEventListener('load', () => {
 
     let animTime = 0;
 
-    // --- PC MOUSE & KEYBOARD CONTROLS ---
+    const btnPc = document.getElementById('btn-mode-pc');
+    const btnMobile = document.getElementById('btn-mode-mobile');
+    const touchControlsUI = document.getElementById('touch-controls');
+    const hintText = document.getElementById('hint-text');
+
+    function setControlMode(mode) {
+        controlMode = mode;
+        if (mode === 'pc') {
+            btnPc.classList.add('active');
+            btnMobile.classList.remove('active');
+            touchControlsUI.classList.add('hidden');
+            hintText.innerHTML = "<b>PC Mode:</b> Click canvas to lock mouse. WASD = Move | E = Dribble | Q = Dunk | Left-Click = Shoot";
+        } else {
+            btnMobile.classList.add('active');
+            btnPc.classList.remove('active');
+            touchControlsUI.classList.remove('hidden');
+            hintText.innerHTML = "<b>Mobile Mode:</b> Joystick = Move | Drag Screen = Aim | Tap DRIBBLE, DUNK, or SHOOT";
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+        }
+    }
+
+    btnPc.addEventListener('click', (e) => { e.stopPropagation(); setControlMode('pc'); });
+    btnMobile.addEventListener('click', (e) => { e.stopPropagation(); setControlMode('mobile'); });
+
+    // --- PC MOUSE & KEYBOARD INPUTS ---
     document.body.addEventListener('click', (e) => {
-        if (!isLocked && !isPaused && e.clientX && !('ontouchstart' in window)) {
+        if (controlMode === 'pc' && !isLocked && !isPaused && e.target.tagName !== 'BUTTON') {
             document.body.requestPointerLock();
         }
     });
 
     document.addEventListener('pointerlockchange', () => {
-        isLocked = document.pointerLockElement === document.body;
+        isLocked = (document.pointerLockElement === document.body);
     });
 
     document.addEventListener('mousemove', (e) => {
-        if (!isLocked || isPaused) return;
+        if (controlMode !== 'pc' || !isLocked || isPaused) return;
         cameraRotation.yaw -= e.movementX * 0.0025;
         cameraRotation.pitch -= e.movementY * 0.0025;
         cameraRotation.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 4, cameraRotation.pitch));
@@ -227,18 +253,18 @@ window.addEventListener('load', () => {
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
     window.addEventListener('mousedown', (e) => {
-        if (e.button === 0 && isLocked && !isPaused && ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
+        if (controlMode === 'pc' && e.button === 0 && isLocked && !isPaused && ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
             triggerShotStart();
         }
     });
 
     window.addEventListener('mouseup', (e) => {
-        if (e.button === 0 && isChargingShot && isLocked) {
+        if (controlMode === 'pc' && e.button === 0 && isChargingShot && isLocked) {
             triggerShotRelease();
         }
     });
 
-    // --- MOBILE TOUCH CONTROLS ---
+    // --- MOBILE TOUCH INPUTS ---
     const joystickZone = document.getElementById('joystick-zone');
     const joystickStick = document.getElementById('joystick-stick');
     const shootBtn = document.getElementById('shoot-btn');
@@ -249,6 +275,7 @@ window.addEventListener('load', () => {
     let joystickTouchId = null;
 
     joystickZone.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         const touch = e.changedTouches[0];
         joystickTouchId = touch.identifier;
@@ -258,6 +285,7 @@ window.addEventListener('load', () => {
     });
 
     joystickZone.addEventListener('touchmove', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].identifier === joystickTouchId) {
@@ -293,8 +321,8 @@ window.addEventListener('load', () => {
         touchJoystickDir.z = stickY / maxRadius;
     }
 
-    // Drag screen aiming
     document.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const target = e.target;
@@ -307,6 +335,7 @@ window.addEventListener('load', () => {
     });
 
     document.addEventListener('touchmove', (e) => {
+        if (controlMode !== 'mobile') return;
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             if (touch.identifier === touchLookId) {
@@ -335,6 +364,7 @@ window.addEventListener('load', () => {
     document.addEventListener('touchcancel', stopLookTouch);
 
     shootBtn.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         if (!isPaused && ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
             triggerShotStart();
@@ -342,6 +372,7 @@ window.addEventListener('load', () => {
     });
 
     shootBtn.addEventListener('touchend', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         if (isChargingShot) {
             triggerShotRelease();
@@ -349,16 +380,17 @@ window.addEventListener('load', () => {
     });
 
     dribbleBtn.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         performTrickDribble();
     });
 
     dunkBtn.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
         e.preventDefault();
         performDunk();
     });
 
-    // Helper Functions
     function triggerShotStart() {
         isChargingShot = true;
         shotPower = 0;
@@ -371,7 +403,6 @@ window.addEventListener('load', () => {
         releaseShot();
     }
 
-    // --- TRICK DRIBBLE & DUNK ACTION LOGIC ---
     function performTrickDribble() {
         if (ballPossession === 'player' && !isBallInAir && !isTrickDribbling && !isDunking) {
             isTrickDribbling = true;
@@ -382,7 +413,7 @@ window.addEventListener('load', () => {
     function performDunk() {
         if (ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
             const distToHoop = player.group.position.distanceTo(northHoop.rimPos);
-            if (distToHoop < 9.0) { // Require player to be close enough
+            if (distToHoop < 9.0) {
                 isDunking = true;
                 dunkProgress = 0;
                 dunkStartPos.copy(player.group.position);
@@ -390,7 +421,7 @@ window.addEventListener('load', () => {
         }
     }
 
-    // --- 5. PHYSICS & SHOOTING MECHANICS ---
+    // --- 5. PHYSICS & SHOOTING ---
     function releaseShot() {
         isBallInAir = true;
         ballPossession = 'none';
@@ -427,7 +458,6 @@ window.addEventListener('load', () => {
 
     function animateCharacter(char, isMoving, isCharging, isDribble, isDunk, progress, time) {
         if (isDunk) {
-            // Slam Dunk Animation
             const jumpHeight = Math.sin(progress * Math.PI) * 2.2;
             char.group.position.y = jumpHeight;
             char.rightArm.rotation.x = -Math.PI + 0.2;
@@ -435,7 +465,6 @@ window.addEventListener('load', () => {
             char.leftLeg.rotation.x = -0.5;
             char.rightLeg.rotation.x = 0.5;
         } else if (isDribble) {
-            // Trick Dribble animation (crossover bent knees)
             char.group.position.y = 0;
             char.leftLeg.rotation.x = 0.4;
             char.rightLeg.rotation.x = -0.4;
@@ -466,7 +495,7 @@ window.addEventListener('load', () => {
         }
     }
 
-    // --- 6. ANIMATION & GAME LOOP ---
+    // --- 6. GAME LOOP ---
     const clock = new THREE.Clock();
 
     function animate() {
@@ -480,24 +509,20 @@ window.addEventListener('load', () => {
             const speed = isTrickDribbling ? 8.5 : 6.0;
             const moveDir = new THREE.Vector3();
 
-            // Handle Dunking sequence
             if (isDunking) {
                 dunkProgress += delta * 1.3;
                 
-                // Fly player towards rim position
                 const targetDunkPos = northHoop.rimPos.clone();
                 targetDunkPos.y = 0;
                 targetDunkPos.z += 0.8; 
 
                 player.group.position.lerpVectors(dunkStartPos, targetDunkPos, dunkProgress);
                 
-                // Keep player facing rim
                 player.group.rotation.y = Math.atan2(
                     northHoop.rimPos.x - player.group.position.x,
                     northHoop.rimPos.z - player.group.position.z
                 );
 
-                // Ball position locked above head during dunk jump
                 ball.position.copy(player.group.position);
                 ball.position.y = player.group.position.y + 2.1;
                 ball.position.z -= 0.3;
@@ -514,16 +539,16 @@ window.addEventListener('load', () => {
                     ballPossession = 'player';
                 }
             } else {
-                // Keyboard input
-                if (keys['KeyW']) moveDir.z -= 1;
-                if (keys['KeyS']) moveDir.z += 1;
-                if (keys['KeyA']) moveDir.x -= 1;
-                if (keys['KeyD']) moveDir.x += 1;
-
-                // Mobile joystick input
-                if (touchJoystickDir.x !== 0 || touchJoystickDir.z !== 0) {
-                    moveDir.x = touchJoystickDir.x;
-                    moveDir.z = touchJoystickDir.z;
+                if (controlMode === 'pc') {
+                    if (keys['KeyW']) moveDir.z -= 1;
+                    if (keys['KeyS']) moveDir.z += 1;
+                    if (keys['KeyA']) moveDir.x -= 1;
+                    if (keys['KeyD']) moveDir.x += 1;
+                } else {
+                    if (touchJoystickDir.x !== 0 || touchJoystickDir.z !== 0) {
+                        moveDir.x = touchJoystickDir.x;
+                        moveDir.z = touchJoystickDir.z;
+                    }
                 }
 
                 const isMoving = moveDir.lengthSq() > 0;
@@ -536,7 +561,6 @@ window.addEventListener('load', () => {
                 }
             }
 
-            // Trick Dribble timer
             if (isTrickDribbling) {
                 trickDribbleTime += delta;
                 if (trickDribbleTime > 0.8) {
@@ -544,7 +568,6 @@ window.addEventListener('load', () => {
                 }
             }
 
-            // Court Bounds Limit
             player.group.position.x = Math.max(-courtHeight / 2 + 0.5, Math.min(courtHeight / 2 - 0.5, player.group.position.x));
             player.group.position.z = Math.max(-courtWidth / 2 + 0.5, Math.min(courtWidth / 2 - 0.5, player.group.position.z));
 
@@ -559,7 +582,7 @@ window.addEventListener('load', () => {
             lookTarget.y += Math.sin(cameraRotation.pitch) * 5;
             camera.lookAt(lookTarget);
 
-            // CPU AI Tracking
+            // CPU AI
             let cpuTargetPos = player.group.position.clone().add(new THREE.Vector3(0, 0, -2));
             if (ballPossession === 'none') {
                 cpuTargetPos = ball.position.clone();
@@ -576,7 +599,6 @@ window.addEventListener('load', () => {
             const isMoving = moveDir.lengthSq() > 0;
             animateCharacter(player, isMoving, isChargingShot, isTrickDribbling, isDunking, dunkProgress, animTime);
 
-            // Shot Meter charging
             if (isChargingShot) {
                 shotPower += shotPowerDir * 120 * delta;
                 if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
@@ -584,17 +606,14 @@ window.addEventListener('load', () => {
                 document.getElementById('shot-meter-bar').style.width = `${shotPower}%`;
             }
 
-            // Ball Physics and Dribble Logic
             if (!isDunking) {
                 if (ballPossession === 'player') {
                     if (isTrickDribbling) {
-                        // Rapid side-to-side through legs dribble animation
                         const crossoverX = Math.sin(trickDribbleTime * 25) * 0.45;
                         const sideOffset = new THREE.Vector3(crossoverX, 0, -0.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
                         ball.position.copy(player.group.position).add(sideOffset);
                         ball.position.y = Math.abs(Math.sin(trickDribbleTime * 25)) * 0.4 + 0.15;
                     } else {
-                        // Standard Bounce Dribble
                         const bounceHeight = Math.abs(Math.sin(animTime * 12)) * 0.75 + 0.24;
                         const handOffset = new THREE.Vector3(0.4, 0, -0.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.group.rotation.y);
                         ball.position.copy(player.group.position).add(handOffset);
@@ -625,7 +644,6 @@ window.addEventListener('load', () => {
                         if (Math.abs(ballVel.y) < 1.0) ballVel.y = 0;
                     }
 
-                    // Pickup detection
                     const distPlayerToBall = player.group.position.distanceTo(ball.position);
                     const distCpuToBall = cpu.group.position.distanceTo(ball.position);
 
@@ -648,6 +666,9 @@ window.addEventListener('load', () => {
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    // Default startup mode
+    setControlMode('pc');
 
     animate();
 });
