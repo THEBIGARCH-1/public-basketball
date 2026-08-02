@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 1v1 Basketball - PC & Mobile</title>
+    <title>3D 1v1 Basketball - PC & Mobile Modes</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -12,6 +12,11 @@
 <body>
 
     <div id="game-container">
+        <div id="mode-select-bar">
+            <button id="btn-mode-pc" class="mode-btn active">PC / Keyboard Mode</button>
+            <button id="btn-mode-mobile" class="mode-btn">Mobile / Touch Mode</button>
+        </div>
+
         <div id="crosshair"></div>
 
         <div id="scoreboard">
@@ -25,7 +30,7 @@
             <div id="shot-sweet-spot"></div>
         </div>
 
-        <div id="touch-controls">
+        <div id="touch-controls" class="hidden">
             <div id="joystick-zone">
                 <div id="joystick-base">
                     <div id="joystick-stick"></div>
@@ -39,7 +44,7 @@
         </div>
 
         <div id="controls-hint">
-            <b>PC:</b> WASD + Mouse Aim | Click: Shoot | <b>E:</b> Trick Dribble | <b>Q:</b> Dunk
+            <span id="hint-text">PC Mode: Click screen to lock mouse. WASD = Move | E = Dribble | Q = Dunk | Left-Click = Shoot</span>
         </div>
 
         <div id="pause-menu">
