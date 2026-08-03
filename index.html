@@ -44,7 +44,6 @@
             display: block;
         }
 
-        /* --- ARCADE HUD --- */
         #scoreboard {
             position: absolute;
             top: 15px;
@@ -86,7 +85,6 @@
             text-shadow: 0 0 5px #ff0000;
         }
 
-        /* --- CONTROLS --- */
         #touch-controls {
             position: absolute;
             top: 0;
@@ -219,7 +217,7 @@
         </div>
 
         <div id="controls-hint">
-            <b>PC CONTROLS:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>CLICK/SPACE</b> = Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
+            <b>PC:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>SPACE / CLICK</b> = Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
         </div>
     </div>
 
@@ -252,7 +250,6 @@
             window.addEventListener('resize', resize);
             resize();
 
-            // Court Dimensions
             const COURT_TOP = 140;
             const COURT_BOTTOM = 410;
             const COURT_LEFT = 40;
@@ -283,7 +280,6 @@
 
             let animTime = 0;
 
-            // Stable Hoops
             const leftHoop = { x: COURT_LEFT + 25, y: 220, rimY: 170, scoreX: COURT_LEFT + 25 };
             const rightHoop = { x: COURT_RIGHT - 25, y: 220, rimY: 170, scoreX: COURT_RIGHT - 25 };
 
@@ -305,7 +301,6 @@
                 if (e.button === 0 && isShooting) triggerShotRelease();
             });
 
-            // Mobile Joystick logic
             const joyStick = document.getElementById('joystick-stick');
             const joyZone = document.getElementById('joystick-zone');
             let joyCenter = { x: 0, y: 0 };
@@ -473,21 +468,20 @@
 
                 const targetHoop = (player.x > V_WIDTH / 2) ? rightHoop : leftHoop;
                 
-                // Perfect spot is 70-80% power
                 const accuracyFactor = 1 - Math.abs(shotPower - 75) / 75;
-                const drift = (1 - accuracyFactor) * 50;
+                const drift = (1 - accuracyFactor) * 40;
 
                 const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
                 const targetY = targetHoop.rimY;
 
-                const flightTime = 45;
-                ball.vx = (targetX - player.x) / flightTime;
-                ball.vy = (targetY - player.y) / flightTime;
-                ball.vz = 8 + (Math.abs(targetX - player.x) / 40);
-                
+                const flightTime = 40;
                 ball.x = player.x;
                 ball.y = player.y;
                 ball.z = 20;
+
+                ball.vx = (targetX - player.x) / flightTime;
+                ball.vy = (targetY - player.y) / flightTime;
+                ball.vz = Math.max(6, 8 + (Math.abs(targetX - player.x) / 40));
             }
 
             function update() {
@@ -496,7 +490,6 @@
                 
                 drawStadiumAndCourt();
 
-                // Check Sprint (Key or Mobile)
                 const sprintActive = keys['ShiftLeft'] || keys['ShiftRight'] || isSprinting;
                 let speed = sprintActive ? 5.2 : 3.0;
 
@@ -551,9 +544,8 @@
                     constrain(player);
                 }
 
-                // Meter animation (Slowing down meter speed)
                 if (isShooting) {
-                    shotPower += shotPowerDir * 1.4; // Reduced speed for precise aiming
+                    shotPower += shotPowerDir * 1.2;
                     if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
                     if (shotPower <= 0) { shotPower = 0; shotPowerDir = 1; }
                 }
@@ -563,7 +555,6 @@
                     if (trickTime > 35) isTrickDribbling = false;
                 }
 
-                // CPU Follow & Collisions
                 const cpuTargetX = ballPossession === 'player' ? player.x + 30 : ball.x;
                 const cpuTargetY = ballPossession === 'player' ? player.y : ball.y;
                 cpu.x += (cpuTargetX - cpu.x) * 0.03;
@@ -572,7 +563,6 @@
 
                 handlePlayerCollision();
 
-                // Ball Movement Physics
                 if (ballPossession === 'player') {
                     const side = player.facingLeft ? -12 : 12;
                     const dribbleFreq = isTrickDribbling ? 0.5 : 0.25;
@@ -598,7 +588,6 @@
                         ball.vy *= 0.85;
                     }
 
-                    // Score Detection
                     [leftHoop, rightHoop].forEach(hoop => {
                         const distToHoop = Math.hypot(ball.x - hoop.scoreX, ball.y - hoop.rimY);
                         if (!hasScoredThisShot && distToHoop < 18 && ball.vz < 0 && ball.z < 30) {
@@ -607,7 +596,6 @@
                         }
                     });
 
-                    // Pickup Loose Ball
                     if (ball.z < 15) {
                         if (Math.hypot(player.x - ball.x, player.y - ball.y) < 22) {
                             ballPossession = 'player';
@@ -617,7 +605,6 @@
                     }
                 }
 
-                // Render Entities
                 cpu.draw();
                 player.draw();
                 drawBall();
@@ -689,11 +676,9 @@
                     const isLeft = i === 0;
                     const poleX = isLeft ? hoop.x - 18 : hoop.x + 18;
 
-                    // Support Pole
                     ctx.fillStyle = '#333';
                     ctx.fillRect(poleX - 4, hoop.rimY, 8, hoop.y - hoop.rimY + 40);
 
-                    // Backboard
                     ctx.fillStyle = '#fff';
                     ctx.strokeStyle = '#cc0000';
                     ctx.lineWidth = 3;
@@ -701,12 +686,10 @@
                     ctx.fillRect(boardX, hoop.rimY - 35, 8, 45);
                     ctx.strokeRect(boardX, hoop.rimY - 35, 8, 45);
 
-                    // Rim Outer Ring
                     ctx.strokeStyle = '#ff3300';
                     ctx.lineWidth = 3;
                     ctx.strokeRect(hoop.x - 12, hoop.rimY, 24, 4);
 
-                    // Net Pattern
                     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
                     ctx.lineWidth = 1;
                     ctx.beginPath();
@@ -751,7 +734,6 @@
                     ctx.fillStyle = `hsl(${shotPower * 1.2}, 100%, 50%)`;
                     ctx.fillRect(barX, barY, barW * (shotPower / 100), barH);
 
-                    // Green Target Area
                     ctx.fillStyle = '#00ff66';
                     ctx.fillRect(barX + barW * 0.70, barY, barW * 0.12, barH);
 
