@@ -217,7 +217,7 @@
         </div>
 
         <div id="controls-hint">
-            <b>PC:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>SPACE / CLICK</b> = Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
+            <b>PC CONTROLS:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>SPACE / CLICK</b> = Hold & Release Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
         </div>
     </div>
 
@@ -264,7 +264,7 @@
             let touchMoveDir = { x: 0, y: 0 };
             let isSprinting = false;
 
-            let ballPossession = 'player';
+            let ballPossession = 'player'; // 'player', 'cpu', or 'none'
             let isShooting = false;
             let shotPower = 0;
             let shotPowerDir = 1;
@@ -283,6 +283,7 @@
             const leftHoop = { x: COURT_LEFT + 25, y: 220, rimY: 170, scoreX: COURT_LEFT + 25 };
             const rightHoop = { x: COURT_RIGHT - 25, y: 220, rimY: 170, scoreX: COURT_RIGHT - 25 };
 
+            // Input Listeners
             window.addEventListener('keydown', (e) => {
                 keys[e.code] = true;
                 if (e.code === 'KeyE') performTrickDribble();
@@ -301,6 +302,7 @@
                 if (e.button === 0 && isShooting) triggerShotRelease();
             });
 
+            // Touch Joystick
             const joyStick = document.getElementById('joystick-stick');
             const joyZone = document.getElementById('joystick-zone');
             let joyCenter = { x: 0, y: 0 };
@@ -359,7 +361,7 @@
             dunkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
 
             function triggerShotStart() { 
-                if(!isDunking && !isTrickDribbling){ 
+                if(!isDunking && !isTrickDribbling && ballPossession === 'player'){ 
                     isShooting = true; 
                     shotPower = 0; 
                     shotPowerDir = 1; 
@@ -385,10 +387,10 @@
                     const distToRight = Math.hypot(player.x - rightHoop.x, player.y - rightHoop.y);
                     const distToLeft = Math.hypot(player.x - leftHoop.x, player.y - leftHoop.y);
                     
-                    if(distToRight < 130) {
+                    if(distToRight < 140) {
                         dunkTargetHoop = rightHoop;
                         startDunkAction();
-                    } else if (distToLeft < 130) {
+                    } else if (distToLeft < 140) {
                         dunkTargetHoop = leftHoop;
                         startDunkAction();
                     }
@@ -468,20 +470,24 @@
 
                 const targetHoop = (player.x > V_WIDTH / 2) ? rightHoop : leftHoop;
                 
+                // Perfect spot is between 70% and 85%
                 const accuracyFactor = 1 - Math.abs(shotPower - 75) / 75;
-                const drift = (1 - accuracyFactor) * 40;
+                const drift = (1 - accuracyFactor) * 35;
 
                 const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
                 const targetY = targetHoop.rimY;
 
-                const flightTime = 40;
+                const flightTime = 42;
                 ball.x = player.x;
                 ball.y = player.y;
                 ball.z = 20;
 
-                ball.vx = (targetX - player.x) / flightTime;
-                ball.vy = (targetY - player.y) / flightTime;
-                ball.vz = Math.max(6, 8 + (Math.abs(targetX - player.x) / 40));
+                const deltaX = targetX - player.x;
+                const deltaY = targetY - player.y;
+
+                ball.vx = deltaX / flightTime;
+                ball.vy = deltaY / flightTime;
+                ball.vz = Math.max(6, 7.5 + (Math.abs(deltaX) / 45));
             }
 
             function update() {
@@ -555,7 +561,8 @@
                     if (trickTime > 35) isTrickDribbling = false;
                 }
 
-                const cpuTargetX = ballPossession === 'player' ? player.x + 30 : ball.x;
+                // CPU AI Movement
+                const cpuTargetX = ballPossession === 'player' ? player.x + 32 : ball.x;
                 const cpuTargetY = ballPossession === 'player' ? player.y : ball.y;
                 cpu.x += (cpuTargetX - cpu.x) * 0.03;
                 cpu.y += (cpuTargetY - cpu.y) * 0.03;
@@ -563,6 +570,7 @@
 
                 handlePlayerCollision();
 
+                // Ball Mechanics
                 if (ballPossession === 'player') {
                     const side = player.facingLeft ? -12 : 12;
                     const dribbleFreq = isTrickDribbling ? 0.5 : 0.25;
