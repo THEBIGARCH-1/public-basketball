@@ -2,784 +2,177 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Retro 3v3 Basketball</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Room Code Chat</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-            font-family: 'Impact', 'Courier New', Courier, monospace;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #030308;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-
-        canvas {
-            background-color: #1a0f07;
-            border: 4px solid #ff9800;
-            box-shadow: 0 0 25px rgba(255, 152, 0, 0.4);
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-            display: block;
-        }
-
-        #scoreboard {
-            position: absolute;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            background: #111;
-            padding: 6px 20px;
-            border: 3px solid #ffcc00;
-            border-radius: 8px;
-            box-shadow: 0 0 12px #ffcc00;
-            z-index: 10;
-        }
-
-        .score-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .score-digits {
-            font-size: 28px;
-            color: #ffcc00;
-            text-shadow: 0 0 8px #ff9800;
-            letter-spacing: 2px;
-        }
-
-        .team-label {
-            font-size: 11px;
-            color: #aaa;
-            letter-spacing: 1px;
-        }
-
-        .timer-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border-left: 2px solid #333;
-            border-right: 2px solid #333;
-            padding: 0 15px;
-        }
-
-        .timer-digits {
-            font-size: 24px;
-            color: #00ff66;
-            text-shadow: 0 0 8px #00ff66;
-        }
-
-        #touch-controls {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 20;
-        }
-
-        #joystick-zone {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 120px;
-            height: 120px;
-            pointer-events: auto;
-        }
-
-        #joystick-base {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.15);
-            border: 3px solid rgba(255, 204, 0, 0.6);
-            border-radius: 50%;
-        }
-
-        #joystick-stick {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 44px;
-            height: 44px;
-            margin-top: -22px;
-            margin-left: -22px;
-            background: #ffcc00;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #ffcc00;
-        }
-
-        #action-zone {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            align-items: flex-end;
-            gap: 8px;
-            pointer-events: auto;
-        }
-
-        .arcade-btn {
-            background: #222;
-            border: 3px solid #fff;
-            color: #fff;
-            font-size: 12px;
-            border-radius: 10px;
-            box-shadow: 0 4px 0 #000;
-            cursor: pointer;
-            text-shadow: 1px 1px 0 #000;
-        }
-
-        .arcade-btn:active, .arcade-btn.active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #000;
-        }
-
-        #shoot-btn { width: 70px; height: 70px; border-color: #ff3333; color: #ffcc00; font-size: 15px; background: radial-gradient(circle, #cc0000, #660000); }
-        .skill-btn { width: 54px; height: 54px; }
-        #pass-btn { border-color: #3399ff; background: radial-gradient(circle, #0055cc, #002266); }
-        #sprint-btn { border-color: #00cc44; background: radial-gradient(circle, #008822, #004411); }
-        #dunk-btn { border-color: #cc33ff; background: radial-gradient(circle, #8800cc, #440066); }
-
-        #controls-hint {
-            position: absolute;
-            bottom: 6px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.7);
-            font-family: sans-serif;
-            font-size: 11px;
-            z-index: 5;
-            white-space: nowrap;
-            pointer-events: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0d0e15; color: #fff; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #chat-container { width: 90vw; max-width: 800px; height: 85vh; background: #1a1d2e; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #3b4252; }
+        #chat-header { padding: 16px 20px; background: #141625; border-bottom: 1px solid #2e3440; display: flex; justify-content: space-between; align-items: center; }
+        .status { font-size: 12px; padding: 6px 12px; border-radius: 12px; background: #bf616a; color: #fff; font-weight: bold; }
+        .status.online { background: #a3be8c; color: #1a1d2e; }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { background: #2e3440; padding: 10px 14px; border-radius: 8px; max-width: 75%; width: fit-content; word-break: break-word; }
+        .msg.self { align-self: flex-end; background: #5e81ac; }
+        .msg .sender { font-size: 11px; color: #d8dee9; margin-bottom: 3px; display: block; font-weight: bold; }
+        #input-area { padding: 15px; background: #141625; display: flex; gap: 10px; border-top: 1px solid #2e3440; }
+        input { flex: 1; padding: 12px; border-radius: 6px; border: 1px solid #3b4252; background: #2e3440; color: #fff; outline: none; }
+        button { padding: 12px 20px; background: #88c0d0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #1a1d2e; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 10; }
+        .modal { background: #1a1d2e; padding: 30px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; text-align: center; width: 320px; border: 1px solid #3b4252; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-
-        <div id="scoreboard">
-            <div class="score-box">
-                <span class="team-label">BLUE 3v3</span>
-                <span id="player-score" class="score-digits">00</span>
-            </div>
-            <div class="timer-box">
-                <span class="team-label">TIME</span>
-                <span id="game-timer" class="timer-digits">02:00</span>
-            </div>
-            <div class="score-box">
-                <span class="team-label">RED 3v3</span>
-                <span id="cpu-score" class="score-digits">00</span>
-            </div>
+    <div id="overlay">
+        <div class="modal">
+            <h2>Enter Live Chat</h2>
+            <p style="font-size: 12px; color: #88c0d0;">Enter a name & match room codes to talk!</p>
+            <input type="text" id="username" placeholder="Your Name" maxlength="15">
+            <input type="text" id="roomcode" placeholder="Room Code (e.g. ROOM99)" maxlength="15">
+            <button onclick="startChat()">Connect to Room</button>
         </div>
+    </div>
 
-        <div id="touch-controls">
-            <div id="joystick-zone">
-                <div id="joystick-base">
-                    <div id="joystick-stick"></div>
-                </div>
-            </div>
-            
-            <div id="action-zone">
-                <button id="sprint-btn" class="arcade-btn skill-btn">RUN</button>
-                <button id="pass-btn" class="arcade-btn skill-btn">PASS</button>
-                <button id="dunk-btn" class="arcade-btn skill-btn">DUNK</button>
-                <button id="shoot-btn" class="arcade-btn">SHOOT</button>
-            </div>
+    <div id="chat-container">
+        <div id="chat-header">
+            <span id="room-display" style="font-weight: bold;">Room: ----</span>
+            <span id="status-badge" class="status">Disconnected</span>
         </div>
-
-        <div id="controls-hint">
-            <b>CONTROLS:</b> WASD/Arrows = Move | <b>SPACE/CLICK</b> = Hold & Release Shoot | <b>X / PASS BTN</b> = Pass/Switch | <b>SHIFT</b> = Sprint | <b>Q</b> = Dunk
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="if(event.key==='Enter') send()">
+            <button onclick="send()">Send</button>
         </div>
     </div>
 
     <script>
-        window.addEventListener('load', () => {
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
+        let peer = null;
+        let conn = null;
+        let myName = "User";
+        let roomID = "";
 
-            const V_WIDTH = 800;
-            const V_HEIGHT = 450;
-
-            function resize() {
-                const winW = window.innerWidth;
-                const winH = window.innerHeight;
-                const winRatio = winW / winH;
-                const gameRatio = V_WIDTH / V_HEIGHT;
-
-                if (winRatio > gameRatio) {
-                    canvas.style.width = (winH * gameRatio) + 'px';
-                    canvas.style.height = winH + 'px';
-                } else {
-                    canvas.style.width = winW + 'px';
-                    canvas.style.height = (winW / gameRatio) + 'px';
-                }
-                canvas.width = V_WIDTH;
-                canvas.height = V_HEIGHT;
+        // PeerJS Configuration with Google STUN Servers to bypass network firewalls
+        const peerConfig = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
             }
-            window.addEventListener('resize', resize);
-            resize();
+        };
 
-            const COURT_TOP = 130;
-            const COURT_BOTTOM = 430;
-            const COURT_LEFT = 35;
-            const COURT_RIGHT = V_WIDTH - 35;
-            const GRAVITY = 0.35;
+        function startChat() {
+            myName = document.getElementById('username').value.trim() || "User";
+            const code = document.getElementById('roomcode').value.trim().toUpperCase();
+            if (!code) return;
 
-            let playerScore = 0;
-            let cpuScore = 0;
-            let timeRemaining = 120;
+            roomID = "ROOM_" + code;
+            document.getElementById('room-display').innerText = "Room: " + code;
+            document.getElementById('overlay').style.display = 'none';
 
-            setInterval(() => {
-                if (timeRemaining > 0) {
-                    timeRemaining--;
-                    const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
-                    const secs = (timeRemaining % 60).toString().padStart(2, '0');
-                    document.getElementById('game-timer').textContent = `${mins}:${secs}`;
-                }
-            }, 1000);
+            addSystemMsg("Connecting to Peer Server...");
 
-            let keys = {};
-            let touchMoveDir = { x: 0, y: 0 };
-            let isSprinting = false;
+            // Try joining as Host using Room Code
+            peer = new Peer(roomID, peerConfig);
 
-            let possessor = null;
-            let teamInPossession = 'blue';
-
-            let isShooting = false;
-            let shotPower = 0;
-            let shotPowerDir = 1;
-            let shooter = null;
-
-            let isDunking = false;
-            let dunkProgress = 0;
-            let dunkStartPos = { x: 0, y: 0 };
-            let dunkTargetHoop = null;
-
-            let animTime = 0;
-
-            const leftHoop = { x: COURT_LEFT + 25, y: 280, rimY: 170, scoreX: COURT_LEFT + 25 };
-            const rightHoop = { x: COURT_RIGHT - 25, y: 280, rimY: 170, scoreX: COURT_RIGHT - 25 };
-
-            class Entity {
-                constructor(x, y, color, team, isControlled = false) {
-                    this.x = x; this.y = y; this.radius = 11; this.color = color;
-                    this.team = team; this.isControlled = isControlled;
-                    this.vx = 0; this.vy = 0; this.z = 0;
-                    this.facingLeft = team === 'red';
-                }
-
-                draw() {
-                    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-                    ctx.beginPath();
-                    ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.45, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    const drawY = this.y - this.z;
-
-                    if (this.isControlled) {
-                        ctx.strokeStyle = '#00ff66';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(this.x, this.y + 2, 14, 0, Math.PI * 2);
-                        ctx.stroke();
-                    }
-
-                    ctx.fillStyle = this.color;
-                    ctx.fillRect(this.x - 7, drawY - 20, 14, 13);
-                    ctx.fillStyle = '#111';
-                    ctx.fillRect(this.x - 7, drawY - 7, 14, 7);
-                    
-                    ctx.fillStyle = '#e0ac69';
-                    ctx.fillRect(this.x - 5, drawY, 3, 7);
-                    ctx.fillRect(this.x + 2, drawY, 3, 7);
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(this.x - 6, drawY + 5, 4, 3);
-                    ctx.fillRect(this.x + 2, drawY + 5, 4, 3);
-
-                    ctx.fillStyle = '#e0ac69';
-                    ctx.fillRect(this.x - 5, drawY - 30, 10, 10);
-                    ctx.fillStyle = '#222';
-                    ctx.fillRect(this.x - 5, drawY - 32, 10, 3);
-                }
-            }
-
-            const blueTeam = [
-                new Entity(V_WIDTH * 0.25, 200, '#1e88e5', 'blue', true),
-                new Entity(V_WIDTH * 0.20, 280, '#1976d2', 'blue', false),
-                new Entity(V_WIDTH * 0.18, 360, '#1565c0', 'blue', false)
-            ];
-
-            const redTeam = [
-                new Entity(V_WIDTH * 0.75, 200, '#e53935', 'red', false),
-                new Entity(V_WIDTH * 0.80, 280, '#d32f2f', 'red', false),
-                new Entity(V_WIDTH * 0.82, 360, '#c62828', 'red', false)
-            ];
-
-            const allPlayers = [...blueTeam, ...redTeam];
-
-            let activePlayer = blueTeam[0];
-            possessor = activePlayer;
-
-            const ball = {
-                x: activePlayer.x, y: activePlayer.y, z: 12,
-                vx: 0, vy: 0, vz: 0, radius: 5,
-                draw() {
-                    const drawY = this.y - this.z;
-                    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-                    ctx.beginPath();
-                    ctx.ellipse(this.x, this.y, this.radius * (1 - this.z / 120), this.radius * 0.4, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.fillStyle = '#ff6600';
-                    ctx.beginPath();
-                    ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                }
-            };
-
-            function setControlledPlayer(newPlayer) {
-                blueTeam.forEach(p => p.isControlled = false);
-                activePlayer = newPlayer;
-                activePlayer.isControlled = true;
-            }
-
-            window.addEventListener('keydown', (e) => {
-                keys[e.code] = true;
-                if (e.code === 'KeyX' || e.code === 'KeyE') passBallOrSwitch();
-                if (e.code === 'KeyQ') performDunk();
-                if (e.code === 'Space' && !e.repeat) triggerShotStart();
+            peer.on('open', () => {
+                addSystemMsg(`Created room [${code}]. Tell your friend to enter the exact same code!`);
             });
 
-            window.addEventListener('keyup', (e) => {
-                keys[e.code] = false;
-                if (e.code === 'Space' && isShooting) triggerShotRelease();
-            });
-
-            const joyStick = document.getElementById('joystick-stick');
-            const joyZone = document.getElementById('joystick-zone');
-            let joyCenter = { x: 0, y: 0 };
-            let joyTouchId = null;
-
-            joyZone.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const touch = e.changedTouches[0];
-                joyTouchId = touch.identifier;
-                const rect = joyZone.getBoundingClientRect();
-                joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-                updateJoystick(touch.clientX, touch.clientY);
-            });
-
-            joyZone.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    const touch = e.changedTouches[i];
-                    if (touch.identifier === joyTouchId) updateJoystick(touch.clientX, touch.clientY);
-                }
-            });
-
-            function updateJoystick(clientX, clientY) {
-                const maxR = 40;
-                const dx = clientX - joyCenter.x;
-                const dy = clientY - joyCenter.y;
-                const dist = Math.hypot(dx, dy);
-                const clamp = Math.min(dist, maxR);
-                const angle = Math.atan2(dy, dx);
-                
-                joyStick.style.transform = `translate(${Math.cos(angle)*clamp}px, ${Math.sin(angle)*clamp}px)`;
-                touchMoveDir.x = Math.cos(angle) * (clamp / maxR);
-                touchMoveDir.y = Math.sin(angle) * (clamp / maxR);
-            }
-
-            function resetJoystick() {
-                joyTouchId = null;
-                touchMoveDir = { x: 0, y: 0 };
-                joyStick.style.transform = 'translate(0px, 0px)';
-            }
-            joyZone.addEventListener('touchend', resetJoystick);
-            joyZone.addEventListener('touchcancel', resetJoystick);
-
-            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); triggerShotStart(); });
-            document.getElementById('shoot-btn').addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
-            document.getElementById('pass-btn').addEventListener('touchstart', (e) => { e.preventDefault(); passBallOrSwitch(); });
-            document.getElementById('sprint-btn').addEventListener('touchstart', (e) => { e.preventDefault(); isSprinting = true; });
-            document.getElementById('sprint-btn').addEventListener('touchend', (e) => { e.preventDefault(); isSprinting = false; });
-            document.getElementById('dunk-btn').addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
-
-            function constrain(e) {
-                if (e.x < COURT_LEFT + e.radius) e.x = COURT_LEFT + e.radius;
-                if (e.x > COURT_RIGHT - e.radius) e.x = COURT_RIGHT - e.radius;
-                if (e.y < COURT_TOP + e.radius) e.y = COURT_TOP + e.radius;
-                if (e.y > COURT_BOTTOM - e.radius) e.y = COURT_BOTTOM - e.radius;
-            }
-
-            function constrainBall() {
-                if (ball.x < COURT_LEFT + ball.radius) { ball.x = COURT_LEFT + ball.radius; ball.vx = -ball.vx * 0.5; }
-                if (ball.x > COURT_RIGHT - ball.radius) { ball.x = COURT_RIGHT - ball.radius; ball.vx = -ball.vx * 0.5; }
-                if (ball.y < COURT_TOP + ball.radius) { ball.y = COURT_TOP + ball.radius; ball.vy = -ball.vy * 0.5; }
-                if (ball.y > COURT_BOTTOM - ball.radius) { ball.y = COURT_BOTTOM - ball.radius; ball.vy = -ball.vy * 0.5; }
-            }
-
-            function passBallOrSwitch() {
-                if (possessor === activePlayer) {
-                    let teammates = blueTeam.filter(p => p !== activePlayer);
-                    teammates.sort((a, b) => Math.hypot(a.x - activePlayer.x, a.y - activePlayer.y) - Math.hypot(b.x - activePlayer.x, b.y - activePlayer.y));
-                    
-                    if (teammates.length > 0) {
-                        const passTarget = teammates[0];
-                        possessor = null;
-                        
-                        const time = 28;
-                        ball.vx = (passTarget.x - ball.x) / time;
-                        ball.vy = (passTarget.y - ball.y) / time;
-                        ball.vz = 3;
-
-                        setControlledPlayer(passTarget);
-                    }
-                } else if (teamInPossession === 'red' || possessor === null) {
-                    let closest = blueTeam[0];
-                    let minDist = 9999;
-                    blueTeam.forEach(p => {
-                        let d = Math.hypot(p.x - ball.x, p.y - ball.y);
-                        if (d < minDist) { minDist = d; closest = p; }
+            // If the code is already hosted by Person 1, join them as a Client
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    peer = new Peer(peerConfig); 
+                    peer.on('open', () => {
+                        conn = peer.connect(roomID, { reliable: true });
+                        setupClientHandlers();
                     });
-                    setControlledPlayer(closest);
-                }
-            }
-
-            function triggerShotStart() {
-                if (possessor === activePlayer && !isDunking) {
-                    isShooting = true;
-                    shotPower = 0;
-                    shotPowerDir = 1;
-                    shooter = activePlayer;
-                }
-            }
-
-            function triggerShotRelease() {
-                if (isShooting) {
-                    isShooting = false;
-                    possessor = null;
-
-                    const targetHoop = shooter.team === 'blue' ? rightHoop : leftHoop;
-                    
-                    const accuracy = 1 - Math.abs(shotPower - 75) / 75;
-                    const drift = (1 - accuracy) * 35;
-
-                    ball.x = shooter.x;
-                    ball.y = shooter.y;
-                    ball.z = 22;
-
-                    const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
-                    const targetY = targetHoop.y + (Math.random() - 0.5) * (drift * 0.5);
-                    const targetZ = 50;
-
-                    const flightTime = 48;
-
-                    ball.vx = (targetX - ball.x) / flightTime;
-                    ball.vy = (targetY - ball.y) / flightTime;
-                    ball.vz = (targetZ - ball.z + 0.5 * GRAVITY * flightTime * flightTime) / flightTime;
-                }
-            }
-
-            function performDunk() {
-                if (possessor === activePlayer && !isShooting && !isDunking) {
-                    const distToRight = Math.hypot(activePlayer.x - rightHoop.x, activePlayer.y - rightHoop.y);
-                    if (distToRight < 150) {
-                        isDunking = true;
-                        dunkProgress = 0;
-                        dunkStartPos = { x: activePlayer.x, y: activePlayer.y };
-                        dunkTargetHoop = rightHoop;
-                    }
-                }
-            }
-
-            function updateAI() {
-                redTeam.forEach(red => {
-                    if (possessor === red) {
-                        const targetHoop = leftHoop;
-                        const dist = Math.hypot(red.x - targetHoop.x, red.y - targetHoop.y);
-                        if (dist > 120) {
-                            red.x += (targetHoop.x - red.x) * 0.022;
-                            red.y += (targetHoop.y - red.y) * 0.022;
-                        } else if (!isShooting) {
-                            shooter = red;
-                            shotPower = 75;
-                            triggerShotRelease();
-                        }
-                    } else if (teamInPossession === 'blue') {
-                        const targetBlue = blueTeam[redTeam.indexOf(red)];
-                        const guardX = targetBlue.x + 30;
-                        const guardY = targetBlue.y;
-                        red.x += (guardX - red.x) * 0.025;
-                        red.y += (guardY - red.y) * 0.025;
-                    } else if (possessor === null) {
-                        red.x += (ball.x - red.x) * 0.025;
-                        red.y += (ball.y - red.y) * 0.025;
-                    }
-                    constrain(red);
-                });
-
-                blueTeam.forEach(blue => {
-                    if (!blue.isControlled && blue !== possessor) {
-                        if (teamInPossession === 'blue') {
-                            const offX = rightHoop.x - 120 + (blueTeam.indexOf(blue) * 40);
-                            const offY = 180 + (blueTeam.indexOf(blue) * 80);
-                            blue.x += (offX - blue.x) * 0.02;
-                            blue.y += (offY - blue.y) * 0.02;
-                        } else {
-                            const targetRed = redTeam[blueTeam.indexOf(blue)];
-                            blue.x += (targetRed.x - 30 - blue.x) * 0.025;
-                            blue.y += (targetRed.y - blue.y) * 0.025;
-                        }
-                        constrain(blue);
-                    }
-                });
-            }
-
-            function update() {
-                animTime++;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                drawCourt();
-
-                // Slower movement speeds for controlled player
-                const sprint = keys['ShiftLeft'] || isSprinting;
-                const speed = sprint ? 3.6 : 2.2;
-
-                if (isDunking) {
-                    dunkProgress += 0.025;
-                    activePlayer.x = dunkStartPos.x + (dunkTargetHoop.x - dunkStartPos.x) * dunkProgress;
-                    activePlayer.y = dunkStartPos.y + (dunkTargetHoop.y - dunkStartPos.y) * dunkProgress;
-                    activePlayer.z = Math.sin(dunkProgress * Math.PI) * 48;
-
-                    ball.x = activePlayer.x + 8;
-                    ball.y = activePlayer.y - activePlayer.z - 8;
-
-                    if (dunkProgress >= 0.8 && possessor === activePlayer) {
-                        playerScore += 2;
-                        possessor = null;
-                        ball.x = dunkTargetHoop.scoreX;
-                        ball.y = dunkTargetHoop.y;
-                        ball.z = 20;
-                        ball.vx = 0; ball.vy = 1; ball.vz = -4;
-                    }
-                    if (dunkProgress >= 1.0) {
-                        isDunking = false;
-                        activePlayer.z = 0;
-                    }
                 } else {
-                    let vx = 0, vy = 0;
-                    if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
-                    if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
-                    if (keys['KeyW'] || keys['ArrowUp']) vy -= 1;
-                    if (keys['KeyS'] || keys['ArrowDown']) vy += 1;
-
-                    if (touchMoveDir.x !== 0 || touchMoveDir.y !== 0) {
-                        vx = touchMoveDir.x;
-                        vy = touchMoveDir.y;
-                    }
-
-                    const len = Math.hypot(vx, vy);
-                    if (len > 0) {
-                        activePlayer.vx = (vx / len) * speed;
-                        activePlayer.vy = (vy / len) * speed;
-                        activePlayer.facingLeft = activePlayer.vx < 0;
-                    } else {
-                        activePlayer.vx *= 0.7;
-                        activePlayer.vy *= 0.7;
-                    }
-
-                    activePlayer.x += activePlayer.vx;
-                    activePlayer.y += activePlayer.vy;
-                    constrain(activePlayer);
+                    addSystemMsg("Error connecting: " + err.type);
                 }
+            });
 
-                if (isShooting) {
-                    shotPower += shotPowerDir * 1.2;
-                    if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
-                    if (shotPower <= 0) { shotPower = 0; shotPowerDir = 1; }
+            // Host receives connection from Friend
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnectionHandlers();
+            });
+        }
 
-                    if (possessor) {
-                        ball.x = possessor.x;
-                        ball.y = possessor.y;
-                        ball.z = 24;
-                    }
-                }
+        function setupClientHandlers() {
+            conn.on('open', () => {
+                setOnline();
+                addSystemMsg("Connected live to your friend!");
+            });
+            conn.on('data', data => addMsg(data.sender, data.text, false));
+            conn.on('close', () => setOffline());
+        }
 
-                updateAI();
+        function setupConnectionHandlers() {
+            conn.on('open', () => {
+                setOnline();
+                addSystemMsg("Your friend joined the room!");
+            });
+            conn.on('data', data => addMsg(data.sender, data.text, false));
+            conn.on('close', () => setOffline());
+        }
 
-                if (possessor) {
-                    teamInPossession = possessor.team;
-                    const offset = possessor.facingLeft ? -10 : 10;
-                    ball.x = possessor.x + offset;
-                    ball.y = possessor.y;
-                    ball.z = Math.abs(Math.sin(animTime * 0.18)) * 10;
-                } else {
-                    ball.vz -= GRAVITY;
-                    ball.x += ball.vx;
-                    ball.y += ball.vy;
-                    ball.z += ball.vz;
+        function send() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text) return;
 
-                    constrainBall();
+            addMsg(myName, text, true);
 
-                    if (ball.z <= 0) {
-                        ball.z = 0;
-                        ball.vz = -ball.vz * 0.55;
-                        ball.vx *= 0.85;
-                        ball.vy *= 0.85;
-                    }
-
-                    // Score checks
-                    [leftHoop, rightHoop].forEach(hoop => {
-                        const dist = Math.hypot(ball.x - hoop.scoreX, ball.y - hoop.y);
-                        if (dist < 22 && ball.vz < 0 && ball.z > 30 && ball.z < 65) {
-                            if (hoop === rightHoop) playerScore += 2;
-                            else cpuScore += 2;
-
-                            ball.vx = 0; ball.vy = 1; ball.vz = -2;
-                        }
-                    });
-
-                    // Auto-Switch control to player grabbing ball
-                    if (ball.z < 18) {
-                        allPlayers.forEach(p => {
-                            if (Math.hypot(p.x - ball.x, p.y - ball.y) < 20) {
-                                possessor = p;
-                                if (p.team === 'blue') {
-                                    setControlledPlayer(p);
-                                }
-                            }
-                        });
-                    }
-                }
-
-                allPlayers.sort((a, b) => a.y - b.y);
-                allPlayers.forEach(p => p.draw());
-                ball.draw();
-
-                drawHoops();
-                drawShotMeter();
-
-                document.getElementById('player-score').textContent = playerScore.toString().padStart(2, '0');
-                document.getElementById('cpu-score').textContent = cpuScore.toString().padStart(2, '0');
-
-                requestAnimationFrame(update);
+            if (conn && conn.open) {
+                conn.send({ sender: myName, text: text });
+            } else {
+                addSystemMsg("Message not sent. Waiting for your friend to enter the code...");
             }
 
-            function drawCourt() {
-                ctx.fillStyle = '#0a0814';
-                ctx.fillRect(0, 0, V_WIDTH, COURT_TOP);
+            input.value = "";
+        }
 
-                for (let r = 0; r < 4; r++) {
-                    ctx.fillStyle = (r % 2 === 0) ? '#161228' : '#211b3b';
-                    ctx.fillRect(0, 20 + r * 22, V_WIDTH, 18);
-                }
+        function setOnline() {
+            const badge = document.getElementById('status-badge');
+            badge.innerText = "Connected Live!";
+            badge.classList.add('online');
+        }
 
-                ctx.fillStyle = '#c87b32';
-                ctx.fillRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
+        function setOffline() {
+            const badge = document.getElementById('status-badge');
+            badge.innerText = "Partner Disconnected";
+            badge.classList.remove('online');
+            addSystemMsg("Connection lost.");
+        }
 
-                ctx.fillStyle = 'rgba(0,0,0,0.04)';
-                for (let y = COURT_TOP; y < COURT_BOTTOM; y += 12) {
-                    ctx.fillRect(COURT_LEFT, y, COURT_RIGHT - COURT_LEFT, 6);
-                }
+        function addMsg(sender, text, isSelf) {
+            const box = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = `msg ${isSelf ? 'self' : ''}`;
+            div.innerHTML = `<span class="sender">${sender}</span>${escape(text)}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
 
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
+        function addSystemMsg(text) {
+            const box = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.style.textAlign = 'center';
+            div.style.fontSize = '12px';
+            div.style.color = '#88c0d0';
+            div.style.margin = '4px 0';
+            div.innerText = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
 
-                const midX = (COURT_LEFT + COURT_RIGHT) / 2;
-                ctx.beginPath();
-                ctx.moveTo(midX, COURT_TOP);
-                ctx.lineTo(midX, COURT_BOTTOM);
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.arc(midX, (COURT_TOP + COURT_BOTTOM) / 2, 45, 0, Math.PI * 2);
-                ctx.stroke();
-
-                ctx.fillStyle = '#a14c18';
-                const keyH = 110;
-                const keyY = (COURT_TOP + COURT_BOTTOM) / 2 - keyH / 2;
-                ctx.fillRect(COURT_LEFT, keyY, 100, keyH);
-                ctx.strokeRect(COURT_LEFT, keyY, 100, keyH);
-
-                ctx.fillRect(COURT_RIGHT - 100, keyY, 100, keyH);
-                ctx.strokeRect(COURT_RIGHT - 100, keyY, 100, keyH);
-            }
-
-            function drawHoops() {
-                [leftHoop, rightHoop].forEach((hoop, i) => {
-                    const isLeft = i === 0;
-                    const poleX = isLeft ? hoop.x - 18 : hoop.x + 18;
-
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(poleX - 4, hoop.rimY, 8, hoop.y - hoop.rimY);
-
-                    ctx.fillStyle = '#fff';
-                    ctx.strokeStyle = '#cc0000';
-                    ctx.lineWidth = 3;
-                    const boardX = isLeft ? hoop.x - 12 : hoop.x + 4;
-                    ctx.fillRect(boardX, hoop.rimY - 35, 8, 45);
-                    ctx.strokeRect(boardX, hoop.rimY - 35, 8, 45);
-
-                    ctx.strokeStyle = '#ff3300';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(hoop.x - 10, hoop.rimY, 20, 4);
-                });
-            }
-
-            function drawShotMeter() {
-                if (isShooting && shooter) {
-                    const barW = 50;
-                    const barH = 8;
-                    const barX = shooter.x - barW / 2;
-                    const barY = shooter.y - shooter.z - 42;
-
-                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
-                    ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
-
-                    ctx.fillStyle = `hsl(${shotPower * 1.2}, 100%, 50%)`;
-                    ctx.fillRect(barX, barY, barW * (shotPower / 100), barH);
-
-                    ctx.fillStyle = '#00ff66';
-                    ctx.fillRect(barX + barW * 0.70, barY, barW * 0.12, barH);
-                }
-            }
-
-            update();
-        });
+        function escape(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
     </script>
 </body>
 </html>
