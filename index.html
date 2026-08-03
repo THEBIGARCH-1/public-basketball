@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Retro Arcade Full Court Basketball</title>
-    
+    <title>Retro Full Court Basketball</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,7 +44,7 @@
             display: block;
         }
 
-        /* --- RETRO ARCADE HUD --- */
+        /* --- ARCADE HUD --- */
         #scoreboard {
             position: absolute;
             top: 15px;
@@ -87,7 +86,7 @@
             text-shadow: 0 0 5px #ff0000;
         }
 
-        /* --- MOBILE CONTROLS --- */
+        /* --- CONTROLS --- */
         #touch-controls {
             position: absolute;
             top: 0;
@@ -150,7 +149,7 @@
             text-shadow: 1px 1px 0 #000;
         }
 
-        .arcade-btn:active {
+        .arcade-btn:active, .arcade-btn.active {
             transform: translateY(3px);
             box-shadow: 0 2px 0 #000;
         }
@@ -212,7 +211,7 @@
             </div>
             
             <div id="action-zone">
-                <button id="sprint-btn" class="arcade-btn skill-btn">TURBO</button>
+                <button id="sprint-btn" class="arcade-btn skill-btn">SPRINT</button>
                 <button id="dribble-btn" class="arcade-btn skill-btn">TRICK</button>
                 <button id="dunk-btn" class="arcade-btn skill-btn">DUNK</button>
                 <button id="shoot-btn" class="arcade-btn">SHOOT</button>
@@ -220,7 +219,7 @@
         </div>
 
         <div id="controls-hint">
-            <b>PC CONTROLS:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>LEFT CLICK</b> = Charge & Release Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
+            <b>PC CONTROLS:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>CLICK/SPACE</b> = Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
         </div>
     </div>
 
@@ -230,7 +229,6 @@
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
 
-            // Internal Virtual Arcade Resolution (16:9 widescreen arcade layout)
             const V_WIDTH = 768;
             const V_HEIGHT = 432;
 
@@ -254,25 +252,22 @@
             window.addEventListener('resize', resize);
             resize();
 
-            // Court Dimensions & Angles
+            // Court Dimensions
             const COURT_TOP = 140;
             const COURT_BOTTOM = 410;
             const COURT_LEFT = 40;
             const COURT_RIGHT = V_WIDTH - 40;
 
-            const gravity = 0.45;
+            const gravity = 0.35;
 
             let playerScore = 0;
             let cpuScore = 0;
 
-            // Input States
             let keys = {};
-            let mousePos = { x: V_WIDTH / 2, y: V_HEIGHT / 2 };
             let touchMoveDir = { x: 0, y: 0 };
-            let mobileSprint = false;
+            let isSprinting = false;
 
-            // Game Actions State
-            let ballPossession = 'player'; // 'player', 'cpu', or 'none'
+            let ballPossession = 'player';
             let isShooting = false;
             let shotPower = 0;
             let shotPowerDir = 1;
@@ -288,24 +283,19 @@
 
             let animTime = 0;
 
-            // Hoops Setup (Side Perspective Hoops)
+            // Stable Hoops
             const leftHoop = { x: COURT_LEFT + 25, y: 220, rimY: 170, scoreX: COURT_LEFT + 25 };
             const rightHoop = { x: COURT_RIGHT - 25, y: 220, rimY: 170, scoreX: COURT_RIGHT - 25 };
 
-            // Input Listeners
             window.addEventListener('keydown', (e) => {
                 keys[e.code] = true;
                 if (e.code === 'KeyE') performTrickDribble();
                 if (e.code === 'KeyQ') performDunk();
+                if (e.code === 'Space' && !e.repeat && ballPossession === 'player') triggerShotStart();
             });
-            window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-            canvas.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = V_WIDTH / rect.width;
-                const scaleY = V_HEIGHT / rect.height;
-                mousePos.x = (e.clientX - rect.left) * scaleX;
-                mousePos.y = (e.clientY - rect.top) * scaleY;
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+                if (e.code === 'Space' && isShooting) triggerShotRelease();
             });
 
             canvas.addEventListener('mousedown', (e) => {
@@ -367,8 +357,8 @@
             shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(ballPossession === 'player') triggerShotStart(); });
             shootBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
 
-            sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); mobileSprint = true; });
-            sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); mobileSprint = false; });
+            sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprinting = true; sprintBtn.classList.add('active'); });
+            sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprinting = false; sprintBtn.classList.remove('active'); });
 
             dribbleBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performTrickDribble(); });
             dunkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
@@ -400,10 +390,10 @@
                     const distToRight = Math.hypot(player.x - rightHoop.x, player.y - rightHoop.y);
                     const distToLeft = Math.hypot(player.x - leftHoop.x, player.y - leftHoop.y);
                     
-                    if(distToRight < 120) {
+                    if(distToRight < 130) {
                         dunkTargetHoop = rightHoop;
                         startDunkAction();
-                    } else if (distToLeft < 120) {
+                    } else if (distToLeft < 130) {
                         dunkTargetHoop = leftHoop;
                         startDunkAction();
                     }
@@ -419,12 +409,11 @@
             class Entity {
                 constructor(x, y, radius, color, name) {
                     this.x = x; this.y = y; this.radius = radius; this.color = color; this.name = name;
-                    this.vx = 0; this.vy = 0; this.vz = 0; this.z = 0; // z is jump height
+                    this.vx = 0; this.vy = 0; this.vz = 0; this.z = 0;
                     this.facingLeft = false;
                 }
                 
                 draw() {
-                    // Drop Shadow
                     ctx.fillStyle = 'rgba(0,0,0,0.45)';
                     ctx.beginPath();
                     ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.45, 0, 0, Math.PI * 2);
@@ -432,25 +421,18 @@
 
                     const drawY = this.y - this.z;
 
-                    // Retro Chunky Player Pixel Body
                     ctx.fillStyle = this.color;
-                    // Jersey
                     ctx.fillRect(this.x - 8, drawY - 22, 16, 14);
-                    // Shorts
                     ctx.fillStyle = '#111';
                     ctx.fillRect(this.x - 8, drawY - 8, 16, 8);
-                    // Legs
                     ctx.fillStyle = '#e0ac69';
                     ctx.fillRect(this.x - 6, drawY, 4, 8);
                     ctx.fillRect(this.x + 2, drawY, 4, 8);
-                    // Shoes
                     ctx.fillStyle = '#fff';
                     ctx.fillRect(this.x - 7, drawY + 6, 5, 3);
                     ctx.fillRect(this.x + 2, drawY + 6, 5, 3);
-                    // Head
                     ctx.fillStyle = '#e0ac69';
                     ctx.fillRect(this.x - 6, drawY - 32, 12, 10);
-                    // Hair
                     ctx.fillStyle = '#222';
                     ctx.fillRect(this.x - 6, drawY - 34, 12, 3);
                 }
@@ -467,23 +449,45 @@
                 if (entity.y > COURT_BOTTOM - entity.radius) entity.y = COURT_BOTTOM - entity.radius;
             }
 
+            function handlePlayerCollision() {
+                const dx = cpu.x - player.x;
+                const dy = cpu.y - player.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = player.radius + cpu.radius;
+
+                if (dist < minDist && dist > 0) {
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    player.x -= nx * (overlap / 2);
+                    player.y -= ny * (overlap / 2);
+                    cpu.x += nx * (overlap / 2);
+                    cpu.y += ny * (overlap / 2);
+                }
+            }
+
             function releaseShot() {
                 ballPossession = 'none';
                 hasScoredThisShot = false;
 
-                // Aim towards closest hoop or target
                 const targetHoop = (player.x > V_WIDTH / 2) ? rightHoop : leftHoop;
                 
+                // Perfect spot is 70-80% power
                 const accuracyFactor = 1 - Math.abs(shotPower - 75) / 75;
-                const drift = (1 - accuracyFactor) * 45;
+                const drift = (1 - accuracyFactor) * 50;
 
                 const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
-                const targetY = targetHoop.rimY + (Math.random() - 0.5) * drift;
+                const targetY = targetHoop.rimY;
 
-                const flightTime = 40;
-                ball.vx = (targetX - ball.x) / flightTime;
-                ball.vy = (targetY - ball.y) / flightTime;
-                ball.vz = 9 + (Math.abs(targetX - ball.x) / 35);
+                const flightTime = 45;
+                ball.vx = (targetX - player.x) / flightTime;
+                ball.vy = (targetY - player.y) / flightTime;
+                ball.vz = 8 + (Math.abs(targetX - player.x) / 40);
+                
+                ball.x = player.x;
+                ball.y = player.y;
+                ball.z = 20;
             }
 
             function update() {
@@ -492,9 +496,9 @@
                 
                 drawStadiumAndCourt();
 
-                // Player Sprint Speed
-                const isSprinting = keys['ShiftLeft'] || keys['ShiftRight'] || mobileSprint;
-                let speed = isSprinting ? 5.5 : 3.2;
+                // Check Sprint (Key or Mobile)
+                const sprintActive = keys['ShiftLeft'] || keys['ShiftRight'] || isSprinting;
+                let speed = sprintActive ? 5.2 : 3.0;
 
                 if (isDunking) {
                     dunkProgress += 0.035;
@@ -502,7 +506,6 @@
                     player.y = dunkStartPos.y + (dunkTargetHoop.y - dunkStartPos.y) * dunkProgress;
                     player.z = Math.sin(dunkProgress * Math.PI) * 48;
 
-                    // Ball follows hands during leap
                     ball.x = player.x + (dunkTargetHoop.x > player.x ? 8 : -8);
                     ball.y = player.y - player.z - 10;
 
@@ -510,7 +513,6 @@
                         playerScore += 2;
                         hasScoredThisShot = true;
                         
-                        // Slam ball down through net
                         ballPossession = 'none';
                         ball.x = dunkTargetHoop.scoreX;
                         ball.y = dunkTargetHoop.rimY;
@@ -549,9 +551,9 @@
                     constrain(player);
                 }
 
-                // Meter animation for charging shots
+                // Meter animation (Slowing down meter speed)
                 if (isShooting) {
-                    shotPower += shotPowerDir * 2.8;
+                    shotPower += shotPowerDir * 1.4; // Reduced speed for precise aiming
                     if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
                     if (shotPower <= 0) { shotPower = 0; shotPowerDir = 1; }
                 }
@@ -561,17 +563,19 @@
                     if (trickTime > 35) isTrickDribbling = false;
                 }
 
-                // CPU Simple Follow Logic
-                const cpuTargetX = ballPossession === 'player' ? player.x + 35 : ball.x;
+                // CPU Follow & Collisions
+                const cpuTargetX = ballPossession === 'player' ? player.x + 30 : ball.x;
                 const cpuTargetY = ballPossession === 'player' ? player.y : ball.y;
-                cpu.x += (cpuTargetX - cpu.x) * 0.035;
-                cpu.y += (cpuTargetY - cpu.y) * 0.035;
+                cpu.x += (cpuTargetX - cpu.x) * 0.03;
+                cpu.y += (cpuTargetY - cpu.y) * 0.03;
                 constrain(cpu);
 
-                // Ball Movement & Bounce Physics
+                handlePlayerCollision();
+
+                // Ball Movement Physics
                 if (ballPossession === 'player') {
                     const side = player.facingLeft ? -12 : 12;
-                    const dribbleFreq = isTrickDribbling ? 0.6 : 0.25;
+                    const dribbleFreq = isTrickDribbling ? 0.5 : 0.25;
                     ball.x = player.x + side;
                     ball.y = player.y;
                     ball.z = Math.abs(Math.sin(animTime * dribbleFreq)) * 14;
@@ -587,18 +591,17 @@
                     ball.y += ball.vy;
                     ball.z += ball.vz;
 
-                    // Floor Bounce
                     if (ball.z <= 0) {
                         ball.z = 0;
-                        ball.vz = -ball.vz * 0.65;
+                        ball.vz = -ball.vz * 0.6;
                         ball.vx *= 0.85;
                         ball.vy *= 0.85;
                     }
 
-                    // Score Detection (Passing through hoops)
+                    // Score Detection
                     [leftHoop, rightHoop].forEach(hoop => {
                         const distToHoop = Math.hypot(ball.x - hoop.scoreX, ball.y - hoop.rimY);
-                        if (!hasScoredThisShot && distToHoop < 16 && ball.vz < 0 && ball.z < 25) {
+                        if (!hasScoredThisShot && distToHoop < 18 && ball.vz < 0 && ball.z < 30) {
                             hasScoredThisShot = true;
                             playerScore += 2;
                         }
@@ -622,7 +625,6 @@
                 drawForegroundHoops();
                 drawUI();
 
-                // Score Display
                 document.getElementById('player-score').textContent = playerScore.toString().padStart(2, '0');
                 document.getElementById('cpu-score').textContent = cpuScore.toString().padStart(2, '0');
 
@@ -630,17 +632,14 @@
             }
 
             function drawStadiumAndCourt() {
-                // Stadium Bleachers & Pixel Crowd
                 ctx.fillStyle = '#0f0a1c';
                 ctx.fillRect(0, 0, V_WIDTH, COURT_TOP);
 
-                // Crowd Rows
                 for (let row = 0; row < 4; row++) {
                     const rowY = 30 + row * 22;
                     ctx.fillStyle = (row % 2 === 0) ? '#1c1533' : '#261c42';
                     ctx.fillRect(0, rowY, V_WIDTH, 18);
 
-                    // Pixel spectators
                     for (let x = 10; x < V_WIDTH; x += 14) {
                         const headColor = ((x + row * 7) % 3 === 0) ? '#ffcc99' : (((x + row) % 2 === 0) ? '#cc6633' : '#8d5524');
                         const shirtColor = ((x * 3 + row) % 5 === 0) ? '#ff3333' : (((x + row * 3) % 2 === 0) ? '#3399ff' : '#00cc66');
@@ -651,36 +650,29 @@
                     }
                 }
 
-                // Wooden Court Floor
-                ctx.fillStyle = '#c67d34'; // Rich wood color
+                ctx.fillStyle = '#c67d34';
                 ctx.fillRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
 
-                // Wood Plank Stripes
                 ctx.fillStyle = 'rgba(0,0,0,0.04)';
                 for (let y = COURT_TOP; y < COURT_BOTTOM; y += 12) {
                     ctx.fillRect(COURT_LEFT, y, COURT_RIGHT - COURT_LEFT, 6);
                 }
 
-                // Court Lines
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 3;
 
-                // Outer Boundary
                 ctx.strokeRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
 
-                // Half Court Line
                 const midX = (COURT_LEFT + COURT_RIGHT) / 2;
                 ctx.beginPath();
                 ctx.moveTo(midX, COURT_TOP);
                 ctx.lineTo(midX, COURT_BOTTOM);
                 ctx.stroke();
 
-                // Center Circle
                 ctx.beginPath();
                 ctx.arc(midX, (COURT_TOP + COURT_BOTTOM) / 2, 45, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // Left & Right Keys / Paint Areas
                 ctx.fillStyle = '#a14d18';
                 const keyHeight = 110;
                 const keyY = (COURT_TOP + COURT_BOTTOM) / 2 - keyHeight / 2;
@@ -693,12 +685,11 @@
             }
 
             function drawForegroundHoops() {
-                // Draw Hoops with Side Perspective
                 [leftHoop, rightHoop].forEach((hoop, i) => {
                     const isLeft = i === 0;
                     const poleX = isLeft ? hoop.x - 18 : hoop.x + 18;
 
-                    // Pole Base
+                    // Support Pole
                     ctx.fillStyle = '#333';
                     ctx.fillRect(poleX - 4, hoop.rimY, 8, hoop.y - hoop.rimY + 40);
 
@@ -710,14 +701,13 @@
                     ctx.fillRect(boardX, hoop.rimY - 35, 8, 45);
                     ctx.strokeRect(boardX, hoop.rimY - 35, 8, 45);
 
-                    // Rim & Net
+                    // Rim Outer Ring
                     ctx.strokeStyle = '#ff3300';
                     ctx.lineWidth = 3;
-                    ctx.beginPath();
                     ctx.strokeRect(hoop.x - 12, hoop.rimY, 24, 4);
 
-                    // Net
-                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                    // Net Pattern
+                    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
                     ctx.lineWidth = 1;
                     ctx.beginPath();
                     ctx.moveTo(hoop.x - 10, hoop.rimY + 4);
@@ -731,19 +721,16 @@
             function drawBall() {
                 const drawY = ball.y - ball.z;
 
-                // Ball Drop Shadow on Court
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
                 ctx.beginPath();
                 ctx.ellipse(ball.x, ball.y, ball.radius * (1 - ball.z / 150), ball.radius * 0.4 * (1 - ball.z / 150), 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Ball Circle
                 ctx.fillStyle = ball.color;
                 ctx.beginPath();
                 ctx.arc(ball.x, drawY, ball.radius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Ball Seams
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -752,7 +739,6 @@
             }
 
             function drawUI() {
-                // Draw Power Meter when charging shot
                 if (isShooting) {
                     const barW = 60;
                     const barH = 10;
@@ -765,7 +751,7 @@
                     ctx.fillStyle = `hsl(${shotPower * 1.2}, 100%, 50%)`;
                     ctx.fillRect(barX, barY, barW * (shotPower / 100), barH);
 
-                    // Green Sweet Spot
+                    // Green Target Area
                     ctx.fillStyle = '#00ff66';
                     ctx.fillRect(barX + barW * 0.70, barY, barW * 0.12, barH);
 
@@ -775,7 +761,6 @@
                 }
             }
 
-            // Start Game Loop
             update();
         });
     </script>
