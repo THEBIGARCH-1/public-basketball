@@ -264,7 +264,7 @@
             let touchMoveDir = { x: 0, y: 0 };
             let isSprinting = false;
 
-            let ballPossession = 'player'; // 'player', 'cpu', or 'none'
+            let ballPossession = 'player';
             let isShooting = false;
             let shotPower = 0;
             let shotPowerDir = 1;
@@ -283,7 +283,6 @@
             const leftHoop = { x: COURT_LEFT + 25, y: 220, rimY: 170, scoreX: COURT_LEFT + 25 };
             const rightHoop = { x: COURT_RIGHT - 25, y: 220, rimY: 170, scoreX: COURT_RIGHT - 25 };
 
-            // Input Listeners
             window.addEventListener('keydown', (e) => {
                 keys[e.code] = true;
                 if (e.code === 'KeyE') performTrickDribble();
@@ -302,7 +301,6 @@
                 if (e.button === 0 && isShooting) triggerShotRelease();
             });
 
-            // Touch Joystick
             const joyStick = document.getElementById('joystick-stick');
             const joyZone = document.getElementById('joystick-zone');
             let joyCenter = { x: 0, y: 0 };
@@ -446,6 +444,25 @@
                 if (entity.y > COURT_BOTTOM - entity.radius) entity.y = COURT_BOTTOM - entity.radius;
             }
 
+            function constrainBall() {
+                if (ball.x < COURT_LEFT + ball.radius) {
+                    ball.x = COURT_LEFT + ball.radius;
+                    ball.vx = -ball.vx * 0.6;
+                }
+                if (ball.x > COURT_RIGHT - ball.radius) {
+                    ball.x = COURT_RIGHT - ball.radius;
+                    ball.vx = -ball.vx * 0.6;
+                }
+                if (ball.y < COURT_TOP + ball.radius) {
+                    ball.y = COURT_TOP + ball.radius;
+                    ball.vy = -ball.vy * 0.6;
+                }
+                if (ball.y > COURT_BOTTOM - ball.radius) {
+                    ball.y = COURT_BOTTOM - ball.radius;
+                    ball.vy = -ball.vy * 0.6;
+                }
+            }
+
             function handlePlayerCollision() {
                 const dx = cpu.x - player.x;
                 const dy = cpu.y - player.y;
@@ -470,7 +487,6 @@
 
                 const targetHoop = (player.x > V_WIDTH / 2) ? rightHoop : leftHoop;
                 
-                // Perfect spot is between 70% and 85%
                 const accuracyFactor = 1 - Math.abs(shotPower - 75) / 75;
                 const drift = (1 - accuracyFactor) * 35;
 
@@ -561,7 +577,6 @@
                     if (trickTime > 35) isTrickDribbling = false;
                 }
 
-                // CPU AI Movement
                 const cpuTargetX = ballPossession === 'player' ? player.x + 32 : ball.x;
                 const cpuTargetY = ballPossession === 'player' ? player.y : ball.y;
                 cpu.x += (cpuTargetX - cpu.x) * 0.03;
@@ -570,7 +585,6 @@
 
                 handlePlayerCollision();
 
-                // Ball Mechanics
                 if (ballPossession === 'player') {
                     const side = player.facingLeft ? -12 : 12;
                     const dribbleFreq = isTrickDribbling ? 0.5 : 0.25;
@@ -588,6 +602,8 @@
                     ball.x += ball.vx;
                     ball.y += ball.vy;
                     ball.z += ball.vz;
+
+                    constrainBall();
 
                     if (ball.z <= 0) {
                         ball.z = 0;
