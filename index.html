@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Retro Full Court Basketball</title>
+    <title>Retro 3v3 Basketball</title>
     <style>
         * {
             box-sizing: border-box;
@@ -19,7 +19,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #05050d;
+            background-color: #030308;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -38,7 +38,7 @@
         canvas {
             background-color: #1a0f07;
             border: 4px solid #ff9800;
-            box-shadow: 0 0 20px rgba(255, 152, 0, 0.4);
+            box-shadow: 0 0 25px rgba(255, 152, 0, 0.4);
             image-rendering: pixelated;
             image-rendering: crisp-edges;
             display: block;
@@ -46,17 +46,17 @@
 
         #scoreboard {
             position: absolute;
-            top: 15px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             align-items: center;
-            gap: 25px;
+            gap: 20px;
             background: #111;
-            padding: 8px 24px;
+            padding: 6px 20px;
             border: 3px solid #ffcc00;
-            border-radius: 6px;
-            box-shadow: 0 0 10px #ffcc00;
+            border-radius: 8px;
+            box-shadow: 0 0 12px #ffcc00;
             z-index: 10;
         }
 
@@ -67,7 +67,7 @@
         }
 
         .score-digits {
-            font-size: 32px;
+            font-size: 28px;
             color: #ffcc00;
             text-shadow: 0 0 8px #ff9800;
             letter-spacing: 2px;
@@ -79,10 +79,19 @@
             letter-spacing: 1px;
         }
 
-        .vs-badge {
-            font-size: 18px;
-            color: #ff3333;
-            text-shadow: 0 0 5px #ff0000;
+        .timer-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-left: 2px solid #333;
+            border-right: 2px solid #333;
+            padding: 0 15px;
+        }
+
+        .timer-digits {
+            font-size: 24px;
+            color: #00ff66;
+            text-shadow: 0 0 8px #00ff66;
         }
 
         #touch-controls {
@@ -97,8 +106,8 @@
 
         #joystick-zone {
             position: absolute;
-            bottom: 25px;
-            left: 25px;
+            bottom: 20px;
+            left: 20px;
             width: 120px;
             height: 120px;
             pointer-events: auto;
@@ -117,10 +126,10 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 46px;
-            height: 46px;
-            margin-top: -23px;
-            margin-left: -23px;
+            width: 44px;
+            height: 44px;
+            margin-top: -22px;
+            margin-left: -22px;
             background: #ffcc00;
             border-radius: 50%;
             box-shadow: 0 0 10px #ffcc00;
@@ -128,11 +137,11 @@
 
         #action-zone {
             position: absolute;
-            bottom: 25px;
-            right: 25px;
+            bottom: 20px;
+            right: 20px;
             display: flex;
             align-items: flex-end;
-            gap: 10px;
+            gap: 8px;
             pointer-events: auto;
         }
 
@@ -140,39 +149,27 @@
             background: #222;
             border: 3px solid #fff;
             color: #fff;
-            font-size: 13px;
+            font-size: 12px;
             border-radius: 10px;
-            box-shadow: 0 5px 0 #000;
+            box-shadow: 0 4px 0 #000;
             cursor: pointer;
             text-shadow: 1px 1px 0 #000;
         }
 
         .arcade-btn:active, .arcade-btn.active {
-            transform: translateY(3px);
+            transform: translateY(2px);
             box-shadow: 0 2px 0 #000;
         }
 
-        #shoot-btn {
-            width: 75px;
-            height: 75px;
-            border-color: #ff3333;
-            color: #ffcc00;
-            font-size: 16px;
-            background: radial-gradient(circle, #cc0000, #660000);
-        }
-
-        .skill-btn {
-            width: 58px;
-            height: 58px;
-        }
-
+        #shoot-btn { width: 70px; height: 70px; border-color: #ff3333; color: #ffcc00; font-size: 15px; background: radial-gradient(circle, #cc0000, #660000); }
+        .skill-btn { width: 54px; height: 54px; }
+        #pass-btn { border-color: #3399ff; background: radial-gradient(circle, #0055cc, #002266); }
         #sprint-btn { border-color: #00cc44; background: radial-gradient(circle, #008822, #004411); }
-        #dribble-btn { border-color: #3399ff; background: radial-gradient(circle, #0055cc, #002266); }
         #dunk-btn { border-color: #cc33ff; background: radial-gradient(circle, #8800cc, #440066); }
 
         #controls-hint {
             position: absolute;
-            bottom: 8px;
+            bottom: 6px;
             left: 50%;
             transform: translateX(-50%);
             color: rgba(255, 255, 255, 0.7);
@@ -191,12 +188,15 @@
 
         <div id="scoreboard">
             <div class="score-box">
-                <span class="team-label">HOME</span>
+                <span class="team-label">BLUE 3v3</span>
                 <span id="player-score" class="score-digits">00</span>
             </div>
-            <div class="vs-badge">VS</div>
+            <div class="timer-box">
+                <span class="team-label">TIME</span>
+                <span id="game-timer" class="timer-digits">02:00</span>
+            </div>
             <div class="score-box">
-                <span class="team-label">AWAY</span>
+                <span class="team-label">RED 3v3</span>
                 <span id="cpu-score" class="score-digits">00</span>
             </div>
         </div>
@@ -209,26 +209,25 @@
             </div>
             
             <div id="action-zone">
-                <button id="sprint-btn" class="arcade-btn skill-btn">SPRINT</button>
-                <button id="dribble-btn" class="arcade-btn skill-btn">TRICK</button>
+                <button id="sprint-btn" class="arcade-btn skill-btn">RUN</button>
+                <button id="pass-btn" class="arcade-btn skill-btn">PASS</button>
                 <button id="dunk-btn" class="arcade-btn skill-btn">DUNK</button>
                 <button id="shoot-btn" class="arcade-btn">SHOOT</button>
             </div>
         </div>
 
         <div id="controls-hint">
-            <b>PC CONTROLS:</b> WASD / Arrows = Move | <b>SHIFT</b> = Sprint | <b>SPACE / CLICK</b> = Hold & Release Shoot | <b>Q</b> = Dunk | <b>E</b> = Trick
+            <b>CONTROLS:</b> WASD/Arrows = Move | <b>SPACE/CLICK</b> = Hold & Release Shoot | <b>X / PASS BTN</b> = Pass/Switch | <b>SHIFT</b> = Sprint | <b>Q</b> = Dunk
         </div>
     </div>
 
     <script>
         window.addEventListener('load', () => {
-
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
 
-            const V_WIDTH = 768;
-            const V_HEIGHT = 432;
+            const V_WIDTH = 800;
+            const V_HEIGHT = 450;
 
             function resize() {
                 const winW = window.innerWidth;
@@ -243,64 +242,156 @@
                     canvas.style.width = winW + 'px';
                     canvas.style.height = (winW / gameRatio) + 'px';
                 }
-                
                 canvas.width = V_WIDTH;
                 canvas.height = V_HEIGHT;
             }
             window.addEventListener('resize', resize);
             resize();
 
-            const COURT_TOP = 140;
-            const COURT_BOTTOM = 410;
-            const COURT_LEFT = 40;
-            const COURT_RIGHT = V_WIDTH - 40;
-
-            const gravity = 0.35;
+            const COURT_TOP = 130;
+            const COURT_BOTTOM = 430;
+            const COURT_LEFT = 35;
+            const COURT_RIGHT = V_WIDTH - 35;
+            const GRAVITY = 0.38;
 
             let playerScore = 0;
             let cpuScore = 0;
+            let timeRemaining = 120; // 2 minutes
+
+            setInterval(() => {
+                if (timeRemaining > 0) {
+                    timeRemaining--;
+                    const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+                    const secs = (timeRemaining % 60).toString().padStart(2, '0');
+                    document.getElementById('game-timer').textContent = `${mins}:${secs}`;
+                }
+            }, 1000);
 
             let keys = {};
             let touchMoveDir = { x: 0, y: 0 };
             let isSprinting = false;
 
-            let ballPossession = 'player';
+            let possessor = null; // Entity currently holding the ball
+            let teamInPossession = 'blue'; // 'blue' or 'red'
+
             let isShooting = false;
             let shotPower = 0;
             let shotPowerDir = 1;
-            let hasScoredThisShot = false;
+            let shooter = null;
+
+            let isPassing = false;
+            let passTarget = null;
 
             let isDunking = false;
             let dunkProgress = 0;
             let dunkStartPos = { x: 0, y: 0 };
             let dunkTargetHoop = null;
 
-            let isTrickDribbling = false;
-            let trickTime = 0;
-
             let animTime = 0;
 
             const leftHoop = { x: COURT_LEFT + 25, y: 220, rimY: 170, scoreX: COURT_LEFT + 25 };
             const rightHoop = { x: COURT_RIGHT - 25, y: 220, rimY: 170, scoreX: COURT_RIGHT - 25 };
 
+            class Entity {
+                constructor(x, y, color, team, isControlled = false) {
+                    this.x = x; this.y = y; this.radius = 11; this.color = color;
+                    this.team = team; this.isControlled = isControlled;
+                    this.vx = 0; this.vy = 0; this.z = 0;
+                    this.facingLeft = team === 'red';
+                }
+
+                draw() {
+                    // Ground shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const drawY = this.y - this.z;
+
+                    // Controlled Indicator
+                    if (this.isControlled) {
+                        ctx.strokeStyle = '#00ff66';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y + 2, 14, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // Body / Jersey
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x - 7, drawY - 20, 14, 13);
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(this.x - 7, drawY - 7, 14, 7);
+                    
+                    // Legs & Shoes
+                    ctx.fillStyle = '#e0ac69';
+                    ctx.fillRect(this.x - 5, drawY, 3, 7);
+                    ctx.fillRect(this.x + 2, drawY, 3, 7);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(this.x - 6, drawY + 5, 4, 3);
+                    ctx.fillRect(this.x + 2, drawY + 5, 4, 3);
+
+                    // Head
+                    ctx.fillStyle = '#e0ac69';
+                    ctx.fillRect(this.x - 5, drawY - 30, 10, 10);
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(this.x - 5, drawY - 32, 10, 3);
+                }
+            }
+
+            // Create 3v3 Rosters
+            const blueTeam = [
+                new Entity(V_WIDTH * 0.25, 200, '#1e88e5', 'blue', true),
+                new Entity(V_WIDTH * 0.20, 280, '#1976d2', 'blue', false),
+                new Entity(V_WIDTH * 0.18, 360, '#1565c0', 'blue', false)
+            ];
+
+            const redTeam = [
+                new Entity(V_WIDTH * 0.75, 200, '#e53935', 'red', false),
+                new Entity(V_WIDTH * 0.80, 280, '#d32f2f', 'red', false),
+                new Entity(V_WIDTH * 0.82, 360, '#c62828', 'red', false)
+            ];
+
+            const allPlayers = [...blueTeam, ...redTeam];
+
+            let activePlayer = blueTeam[0]; // Player 1
+            possessor = activePlayer;
+
+            const ball = {
+                x: activePlayer.x, y: activePlayer.y, z: 12,
+                vx: 0, vy: 0, vz: 0, radius: 5,
+                draw() {
+                    const drawY = this.y - this.z;
+                    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x, this.y, this.radius * (1 - this.z / 120), this.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ff6600';
+                    ctx.beginPath();
+                    ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            };
+
+            // Keyboard Events
             window.addEventListener('keydown', (e) => {
                 keys[e.code] = true;
-                if (e.code === 'KeyE') performTrickDribble();
+                if (e.code === 'KeyX' || e.code === 'KeyE') passBallOrSwitch();
                 if (e.code === 'KeyQ') performDunk();
-                if (e.code === 'Space' && !e.repeat && ballPossession === 'player') triggerShotStart();
+                if (e.code === 'Space' && !e.repeat && possessor === activePlayer) triggerShotStart();
             });
+
             window.addEventListener('keyup', (e) => {
                 keys[e.code] = false;
                 if (e.code === 'Space' && isShooting) triggerShotRelease();
             });
 
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.button === 0 && ballPossession === 'player') triggerShotStart();
-            });
-            canvas.addEventListener('mouseup', (e) => {
-                if (e.button === 0 && isShooting) triggerShotRelease();
-            });
-
+            // Touch Controls
             const joyStick = document.getElementById('joystick-stick');
             const joyZone = document.getElementById('joystick-zone');
             let joyCenter = { x: 0, y: 0 };
@@ -312,28 +403,28 @@
                 joyTouchId = touch.identifier;
                 const rect = joyZone.getBoundingClientRect();
                 joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-                updateJoystickStick(touch.clientX, touch.clientY);
+                updateJoystick(touch.clientX, touch.clientY);
             });
 
             joyZone.addEventListener('touchmove', (e) => {
                 e.preventDefault();
                 for (let i = 0; i < e.changedTouches.length; i++) {
                     const touch = e.changedTouches[i];
-                    if (touch.identifier === joyTouchId) updateJoystickStick(touch.clientX, touch.clientY);
+                    if (touch.identifier === joyTouchId) updateJoystick(touch.clientX, touch.clientY);
                 }
             });
 
-            function updateJoystickStick(clientX, clientY) {
-                const maxRadius = 40;
+            function updateJoystick(clientX, clientY) {
+                const maxR = 40;
                 const dx = clientX - joyCenter.x;
                 const dy = clientY - joyCenter.y;
                 const dist = Math.hypot(dx, dy);
-                const clampedDist = Math.min(dist, maxRadius);
+                const clamp = Math.min(dist, maxR);
                 const angle = Math.atan2(dy, dx);
                 
-                joyStick.style.transform = `translate(${Math.cos(angle)*clampedDist}px, ${Math.sin(angle)*clampedDist}px)`;
-                touchMoveDir.x = Math.cos(angle) * (clampedDist / maxRadius);
-                touchMoveDir.y = Math.sin(angle) * (clampedDist / maxRadius);
+                joyStick.style.transform = `translate(${Math.cos(angle)*clamp}px, ${Math.sin(angle)*clamp}px)`;
+                touchMoveDir.x = Math.cos(angle) * (clamp / maxR);
+                touchMoveDir.y = Math.sin(angle) * (clamp / maxR);
             }
 
             function resetJoystick() {
@@ -344,202 +435,185 @@
             joyZone.addEventListener('touchend', resetJoystick);
             joyZone.addEventListener('touchcancel', resetJoystick);
 
-            const shootBtn = document.getElementById('shoot-btn');
-            const sprintBtn = document.getElementById('sprint-btn');
-            const dribbleBtn = document.getElementById('dribble-btn');
-            const dunkBtn = document.getElementById('dunk-btn');
+            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); if(possessor === activePlayer) triggerShotStart(); });
+            document.getElementById('shoot-btn').addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
+            document.getElementById('pass-btn').addEventListener('touchstart', (e) => { e.preventDefault(); passBallOrSwitch(); });
+            document.getElementById('sprint-btn').addEventListener('touchstart', (e) => { e.preventDefault(); isSprinting = true; });
+            document.getElementById('sprint-btn').addEventListener('touchend', (e) => { e.preventDefault(); isSprinting = false; });
+            document.getElementById('dunk-btn').addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
 
-            shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(ballPossession === 'player') triggerShotStart(); });
-            shootBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
-
-            sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprinting = true; sprintBtn.classList.add('active'); });
-            sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprinting = false; sprintBtn.classList.remove('active'); });
-
-            dribbleBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performTrickDribble(); });
-            dunkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
-
-            function triggerShotStart() { 
-                if(!isDunking && !isTrickDribbling && ballPossession === 'player'){ 
-                    isShooting = true; 
-                    shotPower = 0; 
-                    shotPowerDir = 1; 
-                }
+            function constrain(e) {
+                if (e.x < COURT_LEFT + e.radius) e.x = COURT_LEFT + e.radius;
+                if (e.x > COURT_RIGHT - e.radius) e.x = COURT_RIGHT - e.radius;
+                if (e.y < COURT_TOP + e.radius) e.y = COURT_TOP + e.radius;
+                if (e.y > COURT_BOTTOM - e.radius) e.y = COURT_BOTTOM - e.radius;
             }
 
-            function triggerShotRelease() { 
-                if (isShooting) {
-                    isShooting = false; 
-                    releaseShot(); 
-                }
+            function constrainBall() {
+                if (ball.x < COURT_LEFT + ball.radius) { ball.x = COURT_LEFT + ball.radius; ball.vx = -ball.vx * 0.5; }
+                if (ball.x > COURT_RIGHT - ball.radius) { ball.x = COURT_RIGHT - ball.radius; ball.vx = -ball.vx * 0.5; }
+                if (ball.y < COURT_TOP + ball.radius) { ball.y = COURT_TOP + ball.radius; ball.vy = -ball.vy * 0.5; }
+                if (ball.y > COURT_BOTTOM - ball.radius) { ball.y = COURT_BOTTOM - ball.radius; ball.vy = -ball.vy * 0.5; }
             }
 
-            function performTrickDribble() { 
-                if(ballPossession === 'player' && !isShooting && !isDunking) { 
-                    isTrickDribbling = true; 
-                    trickTime = 0; 
-                }
-            }
-
-            function performDunk() { 
-                if(ballPossession === 'player' && !isShooting && !isTrickDribbling){
-                    const distToRight = Math.hypot(player.x - rightHoop.x, player.y - rightHoop.y);
-                    const distToLeft = Math.hypot(player.x - leftHoop.x, player.y - leftHoop.y);
+            function passBallOrSwitch() {
+                if (possessor === activePlayer) {
+                    // Pass to nearest Blue teammate
+                    let teammates = blueTeam.filter(p => p !== activePlayer);
+                    teammates.sort((a, b) => Math.hypot(a.x - activePlayer.x, a.y - activePlayer.y) - Math.hypot(b.x - activePlayer.x, b.y - activePlayer.y));
                     
-                    if(distToRight < 140) {
+                    if (teammates.length > 0) {
+                        passTarget = teammates[0];
+                        possessor = null;
+                        isPassing = true;
+                        
+                        const time = 22;
+                        ball.vx = (passTarget.x - ball.x) / time;
+                        ball.vy = (passTarget.y - ball.y) / time;
+                        ball.vz = 5;
+
+                        // Switch control to receiver
+                        activePlayer.isControlled = false;
+                        activePlayer = passTarget;
+                        activePlayer.isControlled = true;
+                    }
+                } else if (teamInPossession === 'red' || possessor === null) {
+                    // Switch to blue player closest to ball
+                    let closest = blueTeam[0];
+                    let minDist = 9999;
+                    blueTeam.forEach(p => {
+                        let d = Math.hypot(p.x - ball.x, p.y - ball.y);
+                        if (d < minDist) { minDist = d; closest = p; }
+                    });
+                    activePlayer.isControlled = false;
+                    activePlayer = closest;
+                    activePlayer.isControlled = true;
+                }
+            }
+
+            function triggerShotStart() {
+                if (possessor === activePlayer && !isDunking) {
+                    isShooting = true;
+                    shotPower = 0;
+                    shotPowerDir = 1;
+                    shooter = activePlayer;
+                }
+            }
+
+            function triggerShotRelease() {
+                if (isShooting) {
+                    isShooting = false;
+                    possessor = null;
+
+                    const targetHoop = rightHoop;
+                    const accuracy = 1 - Math.abs(shotPower - 75) / 75;
+                    const drift = (1 - accuracy) * 30;
+
+                    const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
+                    const targetY = targetHoop.rimY;
+
+                    const flightTime = 40;
+                    ball.vx = (targetX - ball.x) / flightTime;
+                    ball.vy = (targetY - ball.y) / flightTime;
+                    ball.vz = Math.max(7, 8 + Math.abs(targetX - ball.x) / 50);
+                }
+            }
+
+            function performDunk() {
+                if (possessor === activePlayer && !isShooting && !isDunking) {
+                    const distToRight = Math.hypot(activePlayer.x - rightHoop.x, activePlayer.y - rightHoop.y);
+                    if (distToRight < 150) {
+                        isDunking = true;
+                        dunkProgress = 0;
+                        dunkStartPos = { x: activePlayer.x, y: activePlayer.y };
                         dunkTargetHoop = rightHoop;
-                        startDunkAction();
-                    } else if (distToLeft < 140) {
-                        dunkTargetHoop = leftHoop;
-                        startDunkAction();
                     }
                 }
             }
 
-            function startDunkAction() {
-                isDunking = true;
-                dunkProgress = 0;
-                dunkStartPos = { x: player.x, y: player.y };
-            }
+            function updateAI() {
+                // RED TEAM AI Logic
+                redTeam.forEach(red => {
+                    if (possessor === red) {
+                        // Drive towards left hoop or shoot
+                        const targetHoop = leftHoop;
+                        const dist = Math.hypot(red.x - targetHoop.x, red.y - targetHoop.y);
+                        if (dist > 120) {
+                            red.x += (targetHoop.x - red.x) * 0.035;
+                            red.y += (targetHoop.y - red.y) * 0.035;
+                        } else {
+                            // CPU Shoots
+                            possessor = null;
+                            ball.vx = (targetHoop.scoreX - ball.x) / 38;
+                            ball.vy = (targetHoop.rimY - ball.y) / 38;
+                            ball.vz = 8;
+                        }
+                    } else if (teamInPossession === 'blue') {
+                        // Guard corresponding blue player
+                        const targetBlue = blueTeam[redTeam.indexOf(red)];
+                        const guardX = targetBlue.x + 30;
+                        const guardY = targetBlue.y;
+                        red.x += (guardX - red.x) * 0.04;
+                        red.y += (guardY - red.y) * 0.04;
+                    } else if (possessor === null) {
+                        // Chase loose ball
+                        red.x += (ball.x - red.x) * 0.04;
+                        red.y += (ball.y - red.y) * 0.04;
+                    }
+                    constrain(red);
+                });
 
-            class Entity {
-                constructor(x, y, radius, color, name) {
-                    this.x = x; this.y = y; this.radius = radius; this.color = color; this.name = name;
-                    this.vx = 0; this.vy = 0; this.vz = 0; this.z = 0;
-                    this.facingLeft = false;
-                }
-                
-                draw() {
-                    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-                    ctx.beginPath();
-                    ctx.ellipse(this.x, this.y, this.radius, this.radius * 0.45, 0, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    const drawY = this.y - this.z;
-
-                    ctx.fillStyle = this.color;
-                    ctx.fillRect(this.x - 8, drawY - 22, 16, 14);
-                    ctx.fillStyle = '#111';
-                    ctx.fillRect(this.x - 8, drawY - 8, 16, 8);
-                    ctx.fillStyle = '#e0ac69';
-                    ctx.fillRect(this.x - 6, drawY, 4, 8);
-                    ctx.fillRect(this.x + 2, drawY, 4, 8);
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(this.x - 7, drawY + 6, 5, 3);
-                    ctx.fillRect(this.x + 2, drawY + 6, 5, 3);
-                    ctx.fillStyle = '#e0ac69';
-                    ctx.fillRect(this.x - 6, drawY - 32, 12, 10);
-                    ctx.fillStyle = '#222';
-                    ctx.fillRect(this.x - 6, drawY - 34, 12, 3);
-                }
-            }
-
-            const player = new Entity(V_WIDTH * 0.35, (COURT_TOP + COURT_BOTTOM)/2, 12, '#1e88e5', 'Player');
-            const cpu = new Entity(V_WIDTH * 0.65, (COURT_TOP + COURT_BOTTOM)/2, 12, '#d32f2f', 'CPU');
-            const ball = new Entity(player.x, player.y, 6, '#ff6600', 'Ball');
-
-            function constrain(entity) {
-                if (entity.x < COURT_LEFT + entity.radius) entity.x = COURT_LEFT + entity.radius;
-                if (entity.x > COURT_RIGHT - entity.radius) entity.x = COURT_RIGHT - entity.radius;
-                if (entity.y < COURT_TOP + entity.radius) entity.y = COURT_TOP + entity.radius;
-                if (entity.y > COURT_BOTTOM - entity.radius) entity.y = COURT_BOTTOM - entity.radius;
-            }
-
-            function constrainBall() {
-                if (ball.x < COURT_LEFT + ball.radius) {
-                    ball.x = COURT_LEFT + ball.radius;
-                    ball.vx = -ball.vx * 0.6;
-                }
-                if (ball.x > COURT_RIGHT - ball.radius) {
-                    ball.x = COURT_RIGHT - ball.radius;
-                    ball.vx = -ball.vx * 0.6;
-                }
-                if (ball.y < COURT_TOP + ball.radius) {
-                    ball.y = COURT_TOP + ball.radius;
-                    ball.vy = -ball.vy * 0.6;
-                }
-                if (ball.y > COURT_BOTTOM - ball.radius) {
-                    ball.y = COURT_BOTTOM - ball.radius;
-                    ball.vy = -ball.vy * 0.6;
-                }
-            }
-
-            function handlePlayerCollision() {
-                const dx = cpu.x - player.x;
-                const dy = cpu.y - player.y;
-                const dist = Math.hypot(dx, dy);
-                const minDist = player.radius + cpu.radius;
-
-                if (dist < minDist && dist > 0) {
-                    const overlap = minDist - dist;
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-
-                    player.x -= nx * (overlap / 2);
-                    player.y -= ny * (overlap / 2);
-                    cpu.x += nx * (overlap / 2);
-                    cpu.y += ny * (overlap / 2);
-                }
-            }
-
-            function releaseShot() {
-                ballPossession = 'none';
-                hasScoredThisShot = false;
-
-                const targetHoop = (player.x > V_WIDTH / 2) ? rightHoop : leftHoop;
-                
-                const accuracyFactor = 1 - Math.abs(shotPower - 75) / 75;
-                const drift = (1 - accuracyFactor) * 35;
-
-                const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
-                const targetY = targetHoop.rimY;
-
-                const flightTime = 42;
-                ball.x = player.x;
-                ball.y = player.y;
-                ball.z = 20;
-
-                const deltaX = targetX - player.x;
-                const deltaY = targetY - player.y;
-
-                ball.vx = deltaX / flightTime;
-                ball.vy = deltaY / flightTime;
-                ball.vz = Math.max(6, 7.5 + (Math.abs(deltaX) / 45));
+                // UNCONTROLLED BLUE AI Logic
+                blueTeam.forEach(blue => {
+                    if (!blue.isControlled && blue !== possessor) {
+                        if (teamInPossession === 'blue') {
+                            // Move into open space on offense
+                            const offX = rightHoop.x - 120 + (blueTeam.indexOf(blue) * 40);
+                            const offY = 180 + (blueTeam.indexOf(blue) * 80);
+                            blue.x += (offX - blue.x) * 0.03;
+                            blue.y += (offY - blue.y) * 0.03;
+                        } else {
+                            // Defend red team
+                            const targetRed = redTeam[blueTeam.indexOf(blue)];
+                            blue.x += (targetRed.x - 30 - blue.x) * 0.04;
+                            blue.y += (targetRed.y - blue.y) * 0.04;
+                        }
+                        constrain(blue);
+                    }
+                });
             }
 
             function update() {
                 animTime++;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                drawStadiumAndCourt();
 
-                const sprintActive = keys['ShiftLeft'] || keys['ShiftRight'] || isSprinting;
-                let speed = sprintActive ? 5.2 : 3.0;
+                drawCourt();
+
+                // Active Player Controls
+                const sprint = keys['ShiftLeft'] || isSprinting;
+                const speed = sprint ? 5.2 : 3.2;
 
                 if (isDunking) {
-                    dunkProgress += 0.035;
-                    player.x = dunkStartPos.x + (dunkTargetHoop.x - dunkStartPos.x) * dunkProgress;
-                    player.y = dunkStartPos.y + (dunkTargetHoop.y - dunkStartPos.y) * dunkProgress;
-                    player.z = Math.sin(dunkProgress * Math.PI) * 48;
+                    dunkProgress += 0.038;
+                    activePlayer.x = dunkStartPos.x + (dunkTargetHoop.x - dunkStartPos.x) * dunkProgress;
+                    activePlayer.y = dunkStartPos.y + (dunkTargetHoop.y - dunkStartPos.y) * dunkProgress;
+                    activePlayer.z = Math.sin(dunkProgress * Math.PI) * 48;
 
-                    ball.x = player.x + (dunkTargetHoop.x > player.x ? 8 : -8);
-                    ball.y = player.y - player.z - 10;
+                    ball.x = activePlayer.x + 8;
+                    ball.y = activePlayer.y - activePlayer.z - 8;
 
-                    if (dunkProgress >= 0.78 && !hasScoredThisShot) {
+                    if (dunkProgress >= 0.8 && possessor === activePlayer) {
                         playerScore += 2;
-                        hasScoredThisShot = true;
-                        
-                        ballPossession = 'none';
+                        possessor = null;
                         ball.x = dunkTargetHoop.scoreX;
                         ball.y = dunkTargetHoop.rimY;
-                        ball.z = 20;
-                        ball.vx = 0; ball.vy = 2; ball.vz = -8;
+                        ball.z = 15;
+                        ball.vx = 0; ball.vy = 2; ball.vz = -6;
                     }
-
                     if (dunkProgress >= 1.0) {
                         isDunking = false;
-                        player.z = 0;
+                        activePlayer.z = 0;
                     }
-
                 } else {
                     let vx = 0, vy = 0;
                     if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
@@ -554,51 +628,37 @@
 
                     const len = Math.hypot(vx, vy);
                     if (len > 0) {
-                        player.vx = (vx / len) * speed;
-                        player.vy = (vy / len) * speed;
-                        player.facingLeft = player.vx < 0;
+                        activePlayer.vx = (vx / len) * speed;
+                        activePlayer.vy = (vy / len) * speed;
+                        activePlayer.facingLeft = activePlayer.vx < 0;
                     } else {
-                        player.vx *= 0.7; player.vy *= 0.7;
+                        activePlayer.vx *= 0.7;
+                        activePlayer.vy *= 0.7;
                     }
 
-                    player.x += player.vx;
-                    player.y += player.vy;
-                    constrain(player);
+                    activePlayer.x += activePlayer.vx;
+                    activePlayer.y += activePlayer.vy;
+                    constrain(activePlayer);
                 }
 
+                // Meter update
                 if (isShooting) {
-                    shotPower += shotPowerDir * 1.2;
+                    shotPower += shotPowerDir * 1.5;
                     if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
                     if (shotPower <= 0) { shotPower = 0; shotPowerDir = 1; }
                 }
 
-                if (isTrickDribbling) {
-                    trickTime++;
-                    if (trickTime > 35) isTrickDribbling = false;
-                }
+                updateAI();
 
-                const cpuTargetX = ballPossession === 'player' ? player.x + 32 : ball.x;
-                const cpuTargetY = ballPossession === 'player' ? player.y : ball.y;
-                cpu.x += (cpuTargetX - cpu.x) * 0.03;
-                cpu.y += (cpuTargetY - cpu.y) * 0.03;
-                constrain(cpu);
-
-                handlePlayerCollision();
-
-                if (ballPossession === 'player') {
-                    const side = player.facingLeft ? -12 : 12;
-                    const dribbleFreq = isTrickDribbling ? 0.5 : 0.25;
-                    ball.x = player.x + side;
-                    ball.y = player.y;
-                    ball.z = Math.abs(Math.sin(animTime * dribbleFreq)) * 14;
-
-                } else if (ballPossession === 'cpu') {
-                    ball.x = cpu.x + 10;
-                    ball.y = cpu.y;
-                    ball.z = Math.abs(Math.sin(animTime * 0.25)) * 14;
-
-                } else if (ballPossession === 'none' && !isDunking) {
-                    ball.vz -= gravity;
+                // Ball Physics & Possession
+                if (possessor) {
+                    teamInPossession = possessor.team;
+                    const offset = possessor.facingLeft ? -10 : 10;
+                    ball.x = possessor.x + offset;
+                    ball.y = possessor.y;
+                    ball.z = Math.abs(Math.sin(animTime * 0.25)) * 12;
+                } else {
+                    ball.vz -= GRAVITY;
                     ball.x += ball.vx;
                     ball.y += ball.vy;
                     ball.z += ball.vz;
@@ -607,34 +667,39 @@
 
                     if (ball.z <= 0) {
                         ball.z = 0;
-                        ball.vz = -ball.vz * 0.6;
+                        ball.vz = -ball.vz * 0.55;
                         ball.vx *= 0.85;
                         ball.vy *= 0.85;
                     }
 
+                    // Score checks
                     [leftHoop, rightHoop].forEach(hoop => {
-                        const distToHoop = Math.hypot(ball.x - hoop.scoreX, ball.y - hoop.rimY);
-                        if (!hasScoredThisShot && distToHoop < 18 && ball.vz < 0 && ball.z < 30) {
-                            hasScoredThisShot = true;
-                            playerScore += 2;
+                        const dist = Math.hypot(ball.x - hoop.scoreX, ball.y - hoop.rimY);
+                        if (dist < 16 && ball.vz < 0 && ball.z < 25) {
+                            if (hoop === rightHoop) playerScore += 2;
+                            else cpuScore += 2;
+
+                            ball.vx = 0; ball.vy = 1; ball.vz = -2;
                         }
                     });
 
+                    // Pickup ball
                     if (ball.z < 15) {
-                        if (Math.hypot(player.x - ball.x, player.y - ball.y) < 22) {
-                            ballPossession = 'player';
-                        } else if (Math.hypot(cpu.x - ball.x, cpu.y - ball.y) < 22) {
-                            ballPossession = 'cpu';
-                        }
+                        allPlayers.forEach(p => {
+                            if (Math.hypot(p.x - ball.x, p.y - ball.y) < 18) {
+                                possessor = p;
+                            }
+                        });
                     }
                 }
 
-                cpu.draw();
-                player.draw();
-                drawBall();
+                // Render All Objects
+                allPlayers.sort((a, b) => a.y - b.y);
+                allPlayers.forEach(p => p.draw());
+                ball.draw();
 
-                drawForegroundHoops();
-                drawUI();
+                drawHoops();
+                drawShotMeter();
 
                 document.getElementById('player-score').textContent = playerScore.toString().padStart(2, '0');
                 document.getElementById('cpu-score').textContent = cpuScore.toString().padStart(2, '0');
@@ -642,36 +707,30 @@
                 requestAnimationFrame(update);
             }
 
-            function drawStadiumAndCourt() {
-                ctx.fillStyle = '#0f0a1c';
+            function drawCourt() {
+                // Background Bleachers
+                ctx.fillStyle = '#0a0814';
                 ctx.fillRect(0, 0, V_WIDTH, COURT_TOP);
 
-                for (let row = 0; row < 4; row++) {
-                    const rowY = 30 + row * 22;
-                    ctx.fillStyle = (row % 2 === 0) ? '#1c1533' : '#261c42';
-                    ctx.fillRect(0, rowY, V_WIDTH, 18);
-
-                    for (let x = 10; x < V_WIDTH; x += 14) {
-                        const headColor = ((x + row * 7) % 3 === 0) ? '#ffcc99' : (((x + row) % 2 === 0) ? '#cc6633' : '#8d5524');
-                        const shirtColor = ((x * 3 + row) % 5 === 0) ? '#ff3333' : (((x + row * 3) % 2 === 0) ? '#3399ff' : '#00cc66');
-                        ctx.fillStyle = shirtColor;
-                        ctx.fillRect(x, rowY + 6, 8, 10);
-                        ctx.fillStyle = headColor;
-                        ctx.fillRect(x + 1, rowY + 1, 6, 6);
-                    }
+                // Crowd Rows
+                for (let r = 0; r < 4; r++) {
+                    ctx.fillStyle = (r % 2 === 0) ? '#161228' : '#211b3b';
+                    ctx.fillRect(0, 20 + r * 22, V_WIDTH, 18);
                 }
 
-                ctx.fillStyle = '#c67d34';
+                // Court Wood
+                ctx.fillStyle = '#c87b32';
                 ctx.fillRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
 
+                // Planks
                 ctx.fillStyle = 'rgba(0,0,0,0.04)';
                 for (let y = COURT_TOP; y < COURT_BOTTOM; y += 12) {
                     ctx.fillRect(COURT_LEFT, y, COURT_RIGHT - COURT_LEFT, 6);
                 }
 
+                // Court Lines
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 3;
-
                 ctx.strokeRect(COURT_LEFT, COURT_TOP, COURT_RIGHT - COURT_LEFT, COURT_BOTTOM - COURT_TOP);
 
                 const midX = (COURT_LEFT + COURT_RIGHT) / 2;
@@ -684,25 +743,27 @@
                 ctx.arc(midX, (COURT_TOP + COURT_BOTTOM) / 2, 45, 0, Math.PI * 2);
                 ctx.stroke();
 
-                ctx.fillStyle = '#a14d18';
-                const keyHeight = 110;
-                const keyY = (COURT_TOP + COURT_BOTTOM) / 2 - keyHeight / 2;
-                
-                ctx.fillRect(COURT_LEFT, keyY, 100, keyHeight);
-                ctx.strokeRect(COURT_LEFT, keyY, 100, keyHeight);
+                // Keys
+                ctx.fillStyle = '#a14c18';
+                const keyH = 110;
+                const keyY = (COURT_TOP + COURT_BOTTOM) / 2 - keyH / 2;
+                ctx.fillRect(COURT_LEFT, keyY, 100, keyH);
+                ctx.strokeRect(COURT_LEFT, keyY, 100, keyH);
 
-                ctx.fillRect(COURT_RIGHT - 100, keyY, 100, keyHeight);
-                ctx.strokeRect(COURT_RIGHT - 100, keyY, 100, keyHeight);
+                ctx.fillRect(COURT_RIGHT - 100, keyY, 100, keyH);
+                ctx.strokeRect(COURT_RIGHT - 100, keyY, 100, keyH);
             }
 
-            function drawForegroundHoops() {
+            function drawHoops() {
                 [leftHoop, rightHoop].forEach((hoop, i) => {
                     const isLeft = i === 0;
                     const poleX = isLeft ? hoop.x - 18 : hoop.x + 18;
 
+                    // Pole
                     ctx.fillStyle = '#333';
-                    ctx.fillRect(poleX - 4, hoop.rimY, 8, hoop.y - hoop.rimY + 40);
+                    ctx.fillRect(poleX - 4, hoop.rimY, 8, hoop.y - hoop.rimY + 30);
 
+                    // Backboard
                     ctx.fillStyle = '#fff';
                     ctx.strokeStyle = '#cc0000';
                     ctx.lineWidth = 3;
@@ -710,49 +771,21 @@
                     ctx.fillRect(boardX, hoop.rimY - 35, 8, 45);
                     ctx.strokeRect(boardX, hoop.rimY - 35, 8, 45);
 
+                    // Rim
                     ctx.strokeStyle = '#ff3300';
                     ctx.lineWidth = 3;
-                    ctx.strokeRect(hoop.x - 12, hoop.rimY, 24, 4);
-
-                    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(hoop.x - 10, hoop.rimY + 4);
-                    ctx.lineTo(hoop.x - 6, hoop.rimY + 20);
-                    ctx.lineTo(hoop.x + 6, hoop.rimY + 20);
-                    ctx.lineTo(hoop.x + 10, hoop.rimY + 4);
-                    ctx.stroke();
+                    ctx.strokeRect(hoop.x - 10, hoop.rimY, 20, 4);
                 });
             }
 
-            function drawBall() {
-                const drawY = ball.y - ball.z;
+            function drawShotMeter() {
+                if (isShooting && shooter) {
+                    const barW = 50;
+                    const barH = 8;
+                    const barX = shooter.x - barW / 2;
+                    const barY = shooter.y - shooter.z - 42;
 
-                ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                ctx.beginPath();
-                ctx.ellipse(ball.x, ball.y, ball.radius * (1 - ball.z / 150), ball.radius * 0.4 * (1 - ball.z / 150), 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = ball.color;
-                ctx.beginPath();
-                ctx.arc(ball.x, drawY, ball.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.arc(ball.x, drawY, ball.radius, 0, Math.PI);
-                ctx.stroke();
-            }
-
-            function drawUI() {
-                if (isShooting) {
-                    const barW = 60;
-                    const barH = 10;
-                    const barX = player.x - barW / 2;
-                    const barY = player.y - player.z - 48;
-
-                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillStyle = 'rgba(0,0,0,0.8)';
                     ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
 
                     ctx.fillStyle = `hsl(${shotPower * 1.2}, 100%, 50%)`;
@@ -760,10 +793,6 @@
 
                     ctx.fillStyle = '#00ff66';
                     ctx.fillRect(barX + barW * 0.70, barY, barW * 0.12, barH);
-
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(barX, barY, barW, barH);
                 }
             }
 
