@@ -1,58 +1,606 @@
-v<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 1v1 Basketball - PC & Mobile Modes</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Retro Full Court POV Basketball</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="script.js" defer></script>
+    <style>
+        /* --- RETRO STYLING --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            /* Give it a slightly pixelated font feel */
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0e0e1a; /* Dark void around the court */
+            color: #fff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The main canvas where the 2D game is drawn */
+        canvas {
+            background-color: #2e1a0d; /* Wood brown court */
+            border: 4px solid #fff; /* Crisp court outline */
+            image-rendering: pixelated; /* Essential for retro sharp edges */
+            display: block;
+        }
+
+        /* --- UI OVERLAYS --- */
+        #scoreboard {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: #000;
+            padding: 10px 30px;
+            border: 3px solid #ff9800;
+            border-radius: 5px;
+            z-index: 10;
+        }
+
+        .score-box {
+            font-size: 30px;
+            color: #ff9800;
+            text-align: center;
+        }
+
+        .team-label {
+            font-size: 12px;
+            color: #aaa;
+            display: block;
+        }
+
+        /* Mobile Action Buttons (Right) */
+        #action-zone {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        /* Mobile Joystick (Left) */
+        #joystick-zone {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 130px;
+            height: 130px;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        #joystick-base {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+
+        #joystick-stick {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            margin-top: -25px;
+            margin-left: -25px;
+            background: rgba(255, 152, 0, 0.9);
+            border-radius: 50%;
+        }
+
+        /* Action Buttons styling */
+        .btn {
+            background: #000;
+            border: 3px solid #fff;
+            color: white;
+            font-family: inherit;
+            box-shadow: 0 4px 0 #555;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            margin-bottom: -4px;
+            box-shadow: 0 0 0 #555;
+        }
+
+        #shoot-btn {
+            width: 80px;
+            height: 80px;
+            border-color: #e65100;
+            color: #ff9800;
+            font-size: 18px;
+            border-radius: 10px;
+        }
+
+        .skill-btn {
+            width: 65px;
+            height: 65px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        #sprint-btn { border-color: #4caf50; color: #81c784; }
+        #dribble-btn { border-color: #2196f3; color: #64b5f6; }
+        #dunk-btn { border-color: #9c27b0; color: #ba68c8; }
+
+        /* General hint text */
+        #controls-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            z-index: 5;
+            white-space: nowrap;
+        }
+    </style>
 </head>
 <body>
 
     <div id="game-container">
-        <div id="mode-select-bar">
-            <button id="btn-mode-pc" class="mode-btn active">PC / Keyboard Mode</button>
-            <button id="btn-mode-mobile" class="mode-btn">Mobile / Touch Mode</button>
-        </div>
-
-        <div id="crosshair"></div>
+        <canvas id="gameCanvas"></canvas>
 
         <div id="scoreboard">
-            <div class="score-box"><span class="team-label">PLAYER</span><span id="player-score">0</span></div>
-            <div class="vs">VS</div>
-            <div class="score-box"><span id="cpu-score">0</span><span class="team-label">CPU</span></div>
+            <div class="score-box"><span id="player-score">00</span><span class="team-label">PLAYER</span></div>
+            <div class="vs" style="color:#555; font-size: 20px; align-self:center;">VS</div>
+            <div class="score-box"><span id="cpu-score">00</span><span class="team-label">CPU</span></div>
         </div>
 
-        <div id="shot-meter-container">
-            <div id="shot-meter-bar"></div>
-            <div id="shot-sweet-spot"></div>
-        </div>
-
-        <div id="touch-controls" class="hidden">
+        <div id="touch-controls">
             <div id="joystick-zone">
                 <div id="joystick-base">
                     <div id="joystick-stick"></div>
                 </div>
             </div>
+            
             <div id="action-zone">
-                <button id="sprint-btn" class="skill-btn">SPRINT</button>
-                <button id="dribble-btn" class="skill-btn">DRIBBLE</button>
-                <button id="dunk-btn" class="skill-btn">DUNK</button>
-                <button id="shoot-btn">SHOOT</button>
+                <button id="sprint-btn" class="btn skill-btn">SPRINT</button>
+                <button id="dribble-btn" class="btn skill-btn">TRICK</button>
+                <button id="dunk-btn" class="btn skill-btn">DUNK</button>
+                <button id="shoot-btn" class="btn">SHOOT</button>
             </div>
         </div>
 
         <div id="controls-hint">
-            <span id="hint-text">PC Mode: Click screen to lock mouse. WASD = Move | SHIFT = Sprint | E = Dribble | Q = Dunk | Left-Click = Shoot</span>
-        </div>
-
-        <div id="pause-menu">
-            PAUSED<br>
-            <span style="font-size:18px; font-family:Arial;">Press P or Tap Screen to Resume</span>
+            <b>PC:</b> WASD + Mouse | Click: Shoot | Shift: Sprint | E: Trick | Q: Dunk
         </div>
     </div>
 
+    <script>
+        window.addEventListener('load', () => {
+
+            // --- 1. CANVAS & RETRO SETUP ---
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Virtual game resolution (smaller than screen for pixelated stretch)
+            const V_WIDTH = 640;
+            const V_HEIGHT = 360;
+
+            // Handle resizing of the container while maintaining internal resolution
+            function resize() {
+                const winW = window.innerWidth;
+                const winH = window.innerHeight;
+                const winRatio = winW / winH;
+                const gameRatio = V_WIDTH / V_HEIGHT;
+
+                if (winRatio > gameRatio) {
+                    canvas.style.width = (winH * gameRatio) + 'px';
+                    canvas.style.height = winH + 'px';
+                } else {
+                    canvas.style.width = winW + 'px';
+                    canvas.style.height = (winW / gameRatio) + 'px';
+                }
+                
+                // Set the backbuffer size
+                canvas.width = V_WIDTH;
+                canvas.height = V_HEIGHT;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // --- 2. GAME CONSTANTS & STATE ---
+            const gravity = 0.5; // Controls flight arc
+
+            let playerScore = 0;
+            let cpuScore = 0;
+
+            // Hybrid input state
+            let keys = {};
+            let mousePos = { x: V_WIDTH / 2, y: V_HEIGHT / 2 };
+            let touchMoveDir = { x: 0, y: 0 }; // Joystick input (-1 to 1)
+            let actionInputs = { shooting: false, sprinting: false };
+
+            // Game mechanics state
+            let ballPossession = 'player'; // 'player', 'cpu', or 'none'
+            let isShooting = false;
+            let shotCharge = 0;
+            
+            let isDunking = false;
+            let dunkProgress = 0;
+            let dunkStartPos = { x: 0, y: 0 };
+            
+            let isTrickDribbling = false;
+            let trickTime = 0;
+
+            let animTime = 0;
+
+            // --- 3. INPUT HANDLING (PC & Mobile) ---
+
+            // PC Keyboard
+            window.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                if (e.code === 'KeyE') performTrickDribble();
+                if (e.code === 'KeyQ') performDunk();
+            });
+            window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+            // PC Mouse (Position converted to internal resolution)
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = V_WIDTH / rect.width;
+                const scaleY = V_HEIGHT / rect.height;
+                mousePos.x = (e.clientX - rect.left) * scaleX;
+                mousePos.y = (e.clientY - rect.top) * scaleY;
+            });
+
+            // PC Mouse Click Shooting
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0 && ballPossession === 'player') triggerShotStart();
+            });
+            canvas.addEventListener('mouseup', (e) => {
+                if (e.button === 0 && isShooting) triggerShotRelease();
+            });
+
+            // Mobile Joystick logic
+            const joyStick = document.getElementById('joystick-stick');
+            const joyZone = document.getElementById('joystick-zone');
+            let joyCenter = { x: 0, y: 0 };
+            let joyTouchId = null;
+
+            joyZone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                joyTouchId = touch.identifier;
+                const rect = joyZone.getBoundingClientRect();
+                joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                updateJoystickStick(touch.clientX, touch.clientY);
+            });
+
+            joyZone.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === joyTouchId) updateJoystickStick(touch.clientX, touch.clientY);
+                }
+            });
+
+            function updateJoystickStick(clientX, clientY) {
+                const maxRadius = 45;
+                const dx = clientX - joyCenter.x;
+                const dy = clientY - joyCenter.y;
+                const dist = Math.hypot(dx, dy);
+                const clampedDist = Math.min(dist, maxRadius);
+                const angle = Math.atan2(dy, dx);
+                
+                // Visual movement of stick
+                joyStick.style.transform = `translate(${Math.cos(angle)*clampedDist}px, ${Math.sin(angle)*clampedDist}px)`;
+                
+                // Normlized movement vector (-1 to 1)
+                touchMoveDir.x = Math.cos(angle) * (clampedDist / maxRadius);
+                touchMoveDir.y = Math.sin(angle) * (clampedDist / maxRadius);
+            }
+
+            function resetJoystick() {
+                joyTouchId = null;
+                touchMoveDir = { x: 0, y: 0 };
+                joyStick.style.transform = 'translate(0px, 0px)';
+            }
+            joyZone.addEventListener('touchend', resetJoystick);
+            joyZone.addEventListener('touchcancel', resetJoystick);
+
+            // Mobile Action Buttons
+            const shootBtn = document.getElementById('shoot-btn');
+            const sprintBtn = document.getElementById('sprint-btn');
+            const dribbleBtn = document.getElementById('dribble-btn');
+            const dunkBtn = document.getElementById('dunk-btn');
+
+            shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(ballPossession === 'player') triggerShotStart(); });
+            shootBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
+
+            sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); actionInputs.sprinting = true; });
+            sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); actionInputs.sprinting = false; });
+
+            dribbleBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performTrickDribble(); });
+            dunkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); performDunk(); });
+
+            // Helper triggers for actions
+            function triggerShotStart() { if(!isDunking && !isTrickDribbling){ isShooting = true; shotCharge = 0; }}
+            function triggerShotRelease() { isShooting = false; releaseShot(); }
+            function performTrickDribble() { if(ballPossession === 'player' && !isShooting && !isDunking) { isTrickDribbling = true; trickTime = 0; }}
+            function performDunk() { 
+                if(ballPossession === 'player' && !isShooting && !isTrickDribbling){
+                    const distToRim = Math.hypot(player.x - rim.x, player.y - rim.y);
+                    if(distToRim < 80) { // Require proximity to North net
+                        isDunking = true; dunkProgress = 0; dunkStartPos = { x: player.x, y: player.y };
+                    }
+                }
+            }
+
+            // --- 4. GAME OBJECTS ---
+            const rim = { x: V_WIDTH / 2, y: 40 }; // North Rim Target
+
+            class Entity {
+                constructor(x, y, radius, color) {
+                    this.x = x; this.y = y; this.radius = radius; this.color = color;
+                    this.vx = 0; this.vy = 0; this.vz = 0; this.z = 0; // z is 'height' in 2D top POV
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Simple drop shadow to represent height
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.beginPath();
+                    ctx.arc(this.x + (this.z * 0.2), this.y + (this.z * 0.4), this.radius * (1 - this.z/200), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const player = new Entity(V_WIDTH / 2, V_HEIGHT * 0.75, 10, '#1e88e5');
+            const cpu = new Entity(V_WIDTH / 2, V_HEIGHT / 2, 10, '#d32f2f');
+            const ball = new Entity(V_WIDTH / 2, V_HEIGHT / 2, 6, '#e65100');
+
+            // Boundary collision
+            function constrain(entity, r) {
+                if (entity.x < r) { entity.x = r; entity.vx *= -0.5; }
+                if (entity.x > V_WIDTH - r) { entity.x = V_WIDTH - r; entity.vx *= -0.5; }
+                if (entity.y < r) { entity.y = r; entity.vy *= -0.5; }
+                if (entity.y > V_HEIGHT - r) { entity.y = V_HEIGHT - r; entity.vy *= -0.5; }
+            }
+
+            // Shooting trajectory calc
+            function releaseShot() {
+                ballPossession = 'none';
+                hasScoredThisShot = false;
+                
+                // Angle towards North Rim from current player position
+                const angle = Math.atan2(rim.y - player.y, rim.x - player.x);
+                const dist = Math.hypot(rim.x - player.x, rim.y - player.y);
+                
+                // Add accuracy based on hold time (Sweet spot is ~75)
+                const accuracy = 1 - Math.abs(shotCharge - 75) / 75;
+                const inaccuracyDrift = (1 - accuracy) * 1.5;
+
+                // Physics flight velocities
+                const powerVal = 10 + (shotCharge / 10);
+                ball.vx = Math.cos(angle + (Math.random()-0.5)*inaccuracyDrift) * powerVal;
+                ball.vy = Math.sin(angle + (Math.random()-0.5)*inaccuracyDrift) * powerVal;
+                ball.vz = 8 + (clampedDist(dist, 50, 300) / 30); // Higher arc for longer shots
+            }
+            
+            function clampedDist(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+            // --- 5. MAIN LOOP ---
+            function update() {
+                animTime++;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawCourt();
+
+                // Player Movement logic
+                if (isDunking) {
+                    dunkProgress += 0.04;
+                    // Move character in line toward rim
+                    player.x = dunkStartPos.x + (rim.x - dunkStartPos.x) * dunkProgress;
+                    player.y = dunkStartPos.y + ((rim.y + 10) - dunkStartPos.y) * dunkProgress;
+                    player.z = Math.sin(dunkProgress * Math.PI) * 40; // Visual jump height
+
+                    if(dunkProgress >= 0.8 && !hasScoredThisShot) {
+                        playerScore += 2;
+                        hasScoredThisShot = true;
+                        
+                        // Force ball down through net
+                        ballPossession = 'none';
+                        ball.x = rim.x; ball.y = rim.y + 5; ball.z = 25;
+                        ball.vx = 0; ball.vy = 2; ball.vz = -10;
+                    }
+                    if(dunkProgress >= 1.0) { isDunking = false; player.z = 0; }
+
+                } else {
+                    // Hybrid Movement Calc
+                    let speed = (actionInputs.sprinting || keys['ShiftLeft'] || keys['ShiftRight']) ? 6.0 : 3.5;
+                    if(isShooting || isTrickDribbling) speed *= 0.5; // Slow down during prep
+
+                    let vx = 0, vy = 0;
+                    if (keys['KeyA']) vx -= 1; if (keys['KeyD']) vx += 1;
+                    if (keys['KeyW']) vy -= 1; if (keys['KeyS']) vy += 1;
+                    
+                    if (touchMoveDir.x !== 0 || touchMoveDir.y !== 0) {
+                        vx = touchMoveDir.x; vy = touchMoveDir.y;
+                    }
+
+                    const mag = Math.hypot(vx, vy);
+                    if (mag > 0) {
+                        player.vx = (vx / mag) * speed;
+                        player.vy = (vy / mag) * speed;
+                    } else {
+                        player.vx *= 0.8; player.vy *= 0.8; // Inertia friction
+                    }
+                    player.x += player.vx; player.y += player.vy;
+                    constrain(player, player.radius);
+                }
+
+                // Special move timers
+                if (isShooting) shotCharge = (shotCharge + 2) % 100;
+                if (isTrickDribbling) { trickTime++; if(trickTime > 40) isTrickDribbling = false; }
+
+                // Ball Dribble & Retrieval Logic
+                if (ballPossession === 'player') {
+                    ball.vx = 0; ball.vy = 0;
+                    const dribbleSpeed = isTrickDribbling ? 20 : 10;
+                    
+                    // Simple top POV 'height' bounce
+                    ball.z = Math.abs(Math.sin(animTime * (dribbleSpeed/10))) * 15;
+                    
+                    // Ball position relative to player facing direction (Mouse or movement)
+                    const angle = Math.atan2(mousePos.y - player.y, mousePos.x - player.x);
+                    const handOffset = isTrickDribbling ? Math.sin(trickTime*0.8)*25 : 18;
+                    ball.x = player.x + Math.cos(angle + (isTrickDribbling?0:0.5)) * handOffset;
+                    ball.y = player.y + Math.sin(angle + (isTrickDribbling?0:0.5)) * handOffset;
+
+                } else if (ballPossession === 'none' && !isDunking) {
+                    // Ball free flight physics
+                    ball.vz -= gravity;
+                    ball.x += ball.vx; ball.y += ball.vy; ball.z += ball.vz;
+
+                    // Rim Collision bounce
+                    if (ball.z > 25 && Math.hypot(ball.x - rim.x, ball.y - rim.y) < ball.radius + 6) {
+                        ball.vx *= -0.6; ball.vy *= -0.6; ball.vz *= 0.5;
+                        ball.y += ball.vy < 0 ? -2 : 2; // Anti-stick push
+                    }
+
+                    // Scored swish check
+                    if (!hasScoredThisShot && ball.vz < 0 && ball.z < 30 && ball.z > 15 && Math.hypot(ball.x - rim.x, ball.y - rim.y) < 12) {
+                        playerScore += 2;
+                        hasScoredThisShot = true;
+                        ball.vx *= 0.1; ball.vy *= 0.1; // Swish dampening
+                    }
+
+                    // Ground bounce physics
+                    if (ball.z <= 0) {
+                        ball.z = 0;
+                        ball.vz = -ball.vz * 0.6; // Dampened bounce
+                        ball.vx *= 0.98; ball.vy *= 0.98; // Floor friction
+                        if(Math.abs(ball.vz) < 1) ball.vz = 0;
+                    }
+                    constrain(ball, ball.radius);
+
+                    // Manual Retrieval: Walk over loose ball to grab it
+                    const distToBall = Math.hypot(player.x - ball.x, player.y - ball.y);
+                    if (distToBall < player.radius + ball.radius + 5 && ball.z < 20) {
+                        ballPossession = 'player';
+                    }
+                }
+
+                // --- Drawing Section ---
+                drawUI();
+                player.draw();
+                ball.draw();
+
+                // UI Score updates
+                document.getElementById('player-score').textContent = playerScore.toString().padStart(2, '0');
+                document.getElementById('cpu-score').textContent = cpuScore.toString().padStart(2, '0');
+
+                requestAnimationFrame(update);
+            }
+
+            // Court drawing: Basic retro 2D lines
+            function drawCourt() {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                
+                // Key / Paint area (North)
+                ctx.strokeRect(V_WIDTH / 2 - 40, -10, 80, 110);
+                
+                // Free throw circle
+                ctx.beginPath();
+                ctx.arc(V_WIDTH / 2, 100, 40, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 3 Point Line (Partial arc from North boundary)
+                ctx.beginPath();
+                ctx.arc(V_WIDTH / 2, 0, 200, 0, Math.PI);
+                ctx.stroke();
+                
+                // Half court line
+                ctx.beginPath();
+                ctx.moveTo(0, V_HEIGHT / 2);
+                ctx.lineTo(V_WIDTH, V_HEIGHT / 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(V_WIDTH / 2, V_HEIGHT / 2, 50, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // North Hoop & Backboard representation
+                ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(rim.x, rim.y, 10, 0, Math.PI*2); ctx.fill(); // Orange ring
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(rim.x, rim.y, 7, 0, Math.PI*2); ctx.fill(); // Net center hole
+                ctx.fillStyle = '#fff'; ctx.fillRect(V_WIDTH / 2 - 30, 0, 60, 10); // Backboard
+            }
+
+            // Contextual UI drawing
+            function drawUI() {
+                // Crosshair Reticle (Mouse Pointer)
+                if(!('ontouchstart' in window)) { // Only draw on desktop
+                    ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(mousePos.x, mousePos.y, 8, 0, Math.PI*2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(mousePos.x-12, mousePos.y); ctx.lineTo(mousePos.x+12, mousePos.y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(mousePos.x, mousePos.y-12); ctx.lineTo(mousePos.x, mousePos.y+12); ctx.stroke();
+                }
+
+                // Trick dribble cooldown visual
+                if (isTrickDribbling) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(player.x - 20, player.y - 30, trickTime, 5);
+                }
+
+                // Shot Power charging overlay visual
+                if (isShooting) {
+                    // Position bar above the player's head
+                    const barX = player.x - 25;
+                    const barY = player.y - 40;
+                    const barW = 50;
+                    const barH = 8;
+                    
+                    // BG
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(barX, barY, barW, barH);
+                    
+                    // Fill (Color changes as it charges)
+                    ctx.fillStyle = `hsl(${shotCharge * 1.2}, 100%, 50%)`;
+                    ctx.fillRect(barX, barY, barW * (shotCharge / 100), barH);
+                    
+                    // Sweet spot marker (~75%)
+                    ctx.fillStyle = 'rgba(0, 230, 118, 0.9)';
+                    ctx.fillRect(barX + barW * 0.70, barY, barW * 0.15, barH);
+                    
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+                    ctx.strokeRect(barX, barY, barW, barH);
+                }
+            }
+
+            // Startup
+            update();
+        });
+    </script>
 </body>
 </html>
