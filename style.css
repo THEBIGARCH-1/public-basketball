@@ -185,7 +185,7 @@ body, html {
     right: 30px;
     display: flex;
     align-items: flex-end;
-    gap: 12px;
+    gap: 8px;
     pointer-events: auto;
 }
 
@@ -203,20 +203,24 @@ body, html {
 }
 
 .skill-btn {
-    width: 60px;
-    height: 60px;
+    width: 55px;
+    height: 55px;
     background: rgba(33, 150, 243, 0.85);
     border: 2px solid #fff;
     border-radius: 50%;
     color: white;
     font-family: 'Impact', sans-serif;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.5px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
 }
 
 #dunk-btn {
     background: rgba(156, 39, 176, 0.85);
+}
+
+#sprint-btn {
+    background: rgba(76, 175, 80, 0.85);
 }
 
 /* Controls Hint UI */
