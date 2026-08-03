@@ -165,10 +165,9 @@ window.addEventListener('load', () => {
     ball.castShadow = true;
     scene.add(ball);
 
-    // --- 4. GAME STATE & MODE TOGGLE ---
-    let controlMode = 'pc'; // 'pc' or 'mobile'
+    // --- 4. GAME STATE & CONTROLS ---
+    let controlMode = 'pc';
     let playerScore = 0;
-    let isLocked = false;
     let isPaused = false;
 
     let keys = {};
@@ -177,6 +176,7 @@ window.addEventListener('load', () => {
     let touchJoystickDir = { x: 0, z: 0 };
     let touchLookId = null;
     let lastTouchX = 0, lastTouchY = 0;
+    let touchSprinting = false;
 
     let isChargingShot = false;
     let shotPower = 0;
@@ -184,9 +184,11 @@ window.addEventListener('load', () => {
 
     let isTrickDribbling = false;
     let trickDribbleTime = 0;
+    
     let isDunking = false;
     let dunkProgress = 0;
     let dunkStartPos = new THREE.Vector3();
+    let dunkSlammedBall = false;
 
     let ballPossession = 'player';
     let isBallInAir = false;
@@ -207,12 +209,12 @@ window.addEventListener('load', () => {
             btnPc.classList.add('active');
             btnMobile.classList.remove('active');
             touchControlsUI.classList.add('hidden');
-            hintText.innerHTML = "<b>PC Mode:</b> Click canvas to lock mouse. WASD = Move | E = Dribble | Q = Dunk | Left-Click = Shoot";
+            hintText.innerHTML = "<b>PC Mode:</b> Click canvas to lock mouse. WASD = Move | SHIFT = Sprint | E = Dribble | Q = Dunk | Left-Click = Shoot";
         } else {
             btnMobile.classList.add('active');
             btnPc.classList.remove('active');
             touchControlsUI.classList.remove('hidden');
-            hintText.innerHTML = "<b>Mobile Mode:</b> Joystick = Move | Drag Screen = Aim | Tap DRIBBLE, DUNK, or SHOOT";
+            hintText.innerHTML = "<b>Mobile Mode:</b> Joystick = Move | Drag Screen = Aim | Tap DRIBBLE, DUNK, SPRINT, or SHOOT";
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
@@ -222,19 +224,17 @@ window.addEventListener('load', () => {
     btnPc.addEventListener('click', (e) => { e.stopPropagation(); setControlMode('pc'); });
     btnMobile.addEventListener('click', (e) => { e.stopPropagation(); setControlMode('mobile'); });
 
-    // --- PC MOUSE & KEYBOARD INPUTS ---
+    // --- PC INPUTS ---
     document.body.addEventListener('click', (e) => {
-        if (controlMode === 'pc' && !isLocked && !isPaused && e.target.tagName !== 'BUTTON') {
-            document.body.requestPointerLock();
+        if (controlMode === 'pc' && !isPaused && e.target.tagName !== 'BUTTON') {
+            if (document.pointerLockElement !== document.body) {
+                document.body.requestPointerLock();
+            }
         }
     });
 
-    document.addEventListener('pointerlockchange', () => {
-        isLocked = (document.pointerLockElement === document.body);
-    });
-
     document.addEventListener('mousemove', (e) => {
-        if (controlMode !== 'pc' || !isLocked || isPaused) return;
+        if (controlMode !== 'pc' || document.pointerLockElement !== document.body || isPaused) return;
         cameraRotation.yaw -= e.movementX * 0.0025;
         cameraRotation.pitch -= e.movementY * 0.0025;
         cameraRotation.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 4, cameraRotation.pitch));
@@ -253,13 +253,13 @@ window.addEventListener('load', () => {
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
     window.addEventListener('mousedown', (e) => {
-        if (controlMode === 'pc' && e.button === 0 && isLocked && !isPaused && ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
+        if (controlMode === 'pc' && e.button === 0 && !isPaused && ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
             triggerShotStart();
         }
     });
 
     window.addEventListener('mouseup', (e) => {
-        if (controlMode === 'pc' && e.button === 0 && isChargingShot && isLocked) {
+        if (controlMode === 'pc' && e.button === 0 && isChargingShot) {
             triggerShotRelease();
         }
     });
@@ -270,6 +270,7 @@ window.addEventListener('load', () => {
     const shootBtn = document.getElementById('shoot-btn');
     const dribbleBtn = document.getElementById('dribble-btn');
     const dunkBtn = document.getElementById('dunk-btn');
+    const sprintBtn = document.getElementById('sprint-btn');
 
     let joystickCenter = { x: 0, y: 0 };
     let joystickTouchId = null;
@@ -326,7 +327,7 @@ window.addEventListener('load', () => {
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const target = e.target;
-            if (touch.clientX > window.innerWidth / 2 && touchLookId === null && target !== shootBtn && target !== dribbleBtn && target !== dunkBtn) {
+            if (touch.clientX > window.innerWidth / 2 && touchLookId === null && target !== shootBtn && target !== dribbleBtn && target !== dunkBtn && target !== sprintBtn) {
                 touchLookId = touch.identifier;
                 lastTouchX = touch.clientX;
                 lastTouchY = touch.clientY;
@@ -391,6 +392,18 @@ window.addEventListener('load', () => {
         performDunk();
     });
 
+    sprintBtn.addEventListener('touchstart', (e) => {
+        if (controlMode !== 'mobile') return;
+        e.preventDefault();
+        touchSprinting = true;
+    });
+
+    sprintBtn.addEventListener('touchend', (e) => {
+        if (controlMode !== 'mobile') return;
+        e.preventDefault();
+        touchSprinting = false;
+    });
+
     function triggerShotStart() {
         isChargingShot = true;
         shotPower = 0;
@@ -413,9 +426,10 @@ window.addEventListener('load', () => {
     function performDunk() {
         if (ballPossession === 'player' && !isBallInAir && !isDunking && !isTrickDribbling) {
             const distToHoop = player.group.position.distanceTo(northHoop.rimPos);
-            if (distToHoop < 9.0) {
+            if (distToHoop < 10.0) {
                 isDunking = true;
                 dunkProgress = 0;
+                dunkSlammedBall = false;
                 dunkStartPos.copy(player.group.position);
             }
         }
@@ -458,7 +472,7 @@ window.addEventListener('load', () => {
 
     function animateCharacter(char, isMoving, isCharging, isDribble, isDunk, progress, time) {
         if (isDunk) {
-            const jumpHeight = Math.sin(progress * Math.PI) * 2.2;
+            const jumpHeight = Math.sin(progress * Math.PI) * 2.4;
             char.group.position.y = jumpHeight;
             char.rightArm.rotation.x = -Math.PI + 0.2;
             char.leftArm.rotation.x = -Math.PI / 2;
@@ -479,7 +493,7 @@ window.addEventListener('load', () => {
             char.leftArm.rotation.z = 0.3;
         } else if (isMoving) {
             char.group.position.y = 0;
-            const swing = Math.sin(time * 10) * 0.6;
+            const swing = Math.sin(time * 12) * 0.7;
             char.leftLeg.rotation.x = swing;
             char.rightLeg.rotation.x = -swing;
             char.leftArm.rotation.x = -swing * 0.8;
@@ -506,37 +520,52 @@ window.addEventListener('load', () => {
         if (!isPaused) {
             animTime += delta;
 
-            const speed = isTrickDribbling ? 8.5 : 6.0;
+            // Sprint Speed calculation
+            const isSprinting = (controlMode === 'pc' && (keys['ShiftLeft'] || keys['ShiftRight'])) || (controlMode === 'mobile' && touchSprinting);
+            let speed = 6.0;
+            if (isSprinting) speed = 10.0;
+            if (isTrickDribbling) speed = 8.5;
+
             const moveDir = new THREE.Vector3();
 
             if (isDunking) {
-                dunkProgress += delta * 1.3;
-                
+                dunkProgress += delta * 1.4;
+
                 const targetDunkPos = northHoop.rimPos.clone();
                 targetDunkPos.y = 0;
-                targetDunkPos.z += 0.8; 
+                targetDunkPos.z += 0.85;
 
-                player.group.position.lerpVectors(dunkStartPos, targetDunkPos, dunkProgress);
+                // Move player toward hoop
+                player.group.position.lerpVectors(dunkStartPos, targetDunkPos, Math.min(1.0, dunkProgress));
                 
+                // Turn player toward hoop
                 player.group.rotation.y = Math.atan2(
                     northHoop.rimPos.x - player.group.position.x,
                     northHoop.rimPos.z - player.group.position.z
-                );
+                ) + Math.PI;
 
-                ball.position.copy(player.group.position);
-                ball.position.y = player.group.position.y + 2.1;
-                ball.position.z -= 0.3;
+                if (dunkProgress < 0.65) {
+                    // Holding ball above head during jump
+                    ball.position.copy(player.group.position);
+                    ball.position.y = player.group.position.y + 2.1;
+                    ball.position.z -= 0.2;
+                } else if (!dunkSlammedBall) {
+                    // Slam ball through net physically
+                    dunkSlammedBall = true;
+                    ballPossession = 'none';
+                    isBallInAir = true;
 
-                if (dunkProgress >= 0.85 && !hasScoredThisShot) {
+                    // Spawn ball directly in the hoop and shoot it downwards
+                    ball.position.copy(northHoop.rimPos);
+                    ballVel.set(0, -12, -0.5);
+
                     playerScore += 2;
                     document.getElementById('player-score').textContent = playerScore;
-                    hasScoredThisShot = true;
                 }
 
                 if (dunkProgress >= 1.0) {
                     isDunking = false;
                     player.group.position.y = 0;
-                    ballPossession = 'player';
                 }
             } else {
                 if (controlMode === 'pc') {
@@ -667,8 +696,6 @@ window.addEventListener('load', () => {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Default startup mode
     setControlMode('pc');
-
     animate();
 });
