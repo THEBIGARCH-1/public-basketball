@@ -252,7 +252,7 @@
             const COURT_BOTTOM = 430;
             const COURT_LEFT = 35;
             const COURT_RIGHT = V_WIDTH - 35;
-            const GRAVITY = 0.38;
+            const GRAVITY = 0.35;
 
             let playerScore = 0;
             let cpuScore = 0;
@@ -369,11 +369,17 @@
                 }
             };
 
+            function setControlledPlayer(newPlayer) {
+                blueTeam.forEach(p => p.isControlled = false);
+                activePlayer = newPlayer;
+                activePlayer.isControlled = true;
+            }
+
             window.addEventListener('keydown', (e) => {
                 keys[e.code] = true;
                 if (e.code === 'KeyX' || e.code === 'KeyE') passBallOrSwitch();
                 if (e.code === 'KeyQ') performDunk();
-                if (e.code === 'Space' && !e.repeat && possessor === activePlayer) triggerShotStart();
+                if (e.code === 'Space' && !e.repeat) triggerShotStart();
             });
 
             window.addEventListener('keyup', (e) => {
@@ -424,7 +430,7 @@
             joyZone.addEventListener('touchend', resetJoystick);
             joyZone.addEventListener('touchcancel', resetJoystick);
 
-            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); if(possessor === activePlayer) triggerShotStart(); });
+            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); triggerShotStart(); });
             document.getElementById('shoot-btn').addEventListener('touchend', (e) => { e.preventDefault(); if(isShooting) triggerShotRelease(); });
             document.getElementById('pass-btn').addEventListener('touchstart', (e) => { e.preventDefault(); passBallOrSwitch(); });
             document.getElementById('sprint-btn').addEventListener('touchstart', (e) => { e.preventDefault(); isSprinting = true; });
@@ -454,14 +460,12 @@
                         const passTarget = teammates[0];
                         possessor = null;
                         
-                        const time = 22;
+                        const time = 28;
                         ball.vx = (passTarget.x - ball.x) / time;
                         ball.vy = (passTarget.y - ball.y) / time;
-                        ball.vz = 4;
+                        ball.vz = 3;
 
-                        activePlayer.isControlled = false;
-                        activePlayer = passTarget;
-                        activePlayer.isControlled = true;
+                        setControlledPlayer(passTarget);
                     }
                 } else if (teamInPossession === 'red' || possessor === null) {
                     let closest = blueTeam[0];
@@ -470,9 +474,7 @@
                         let d = Math.hypot(p.x - ball.x, p.y - ball.y);
                         if (d < minDist) { minDist = d; closest = p; }
                     });
-                    activePlayer.isControlled = false;
-                    activePlayer = closest;
-                    activePlayer.isControlled = true;
+                    setControlledPlayer(closest);
                 }
             }
 
@@ -501,14 +503,12 @@
 
                     const targetX = targetHoop.scoreX + (Math.random() - 0.5) * drift;
                     const targetY = targetHoop.y + (Math.random() - 0.5) * (drift * 0.5);
-                    const targetZ = 50; // Rim height
+                    const targetZ = 50;
 
-                    const flightTime = 42;
+                    const flightTime = 48;
 
                     ball.vx = (targetX - ball.x) / flightTime;
                     ball.vy = (targetY - ball.y) / flightTime;
-                    
-                    // Exact 3D arc gravity calculation
                     ball.vz = (targetZ - ball.z + 0.5 * GRAVITY * flightTime * flightTime) / flightTime;
                 }
             }
@@ -531,10 +531,9 @@
                         const targetHoop = leftHoop;
                         const dist = Math.hypot(red.x - targetHoop.x, red.y - targetHoop.y);
                         if (dist > 120) {
-                            red.x += (targetHoop.x - red.x) * 0.035;
-                            red.y += (targetHoop.y - red.y) * 0.035;
+                            red.x += (targetHoop.x - red.x) * 0.022;
+                            red.y += (targetHoop.y - red.y) * 0.022;
                         } else if (!isShooting) {
-                            // CPU shoots accurately
                             shooter = red;
                             shotPower = 75;
                             triggerShotRelease();
@@ -543,11 +542,11 @@
                         const targetBlue = blueTeam[redTeam.indexOf(red)];
                         const guardX = targetBlue.x + 30;
                         const guardY = targetBlue.y;
-                        red.x += (guardX - red.x) * 0.04;
-                        red.y += (guardY - red.y) * 0.04;
+                        red.x += (guardX - red.x) * 0.025;
+                        red.y += (guardY - red.y) * 0.025;
                     } else if (possessor === null) {
-                        red.x += (ball.x - red.x) * 0.04;
-                        red.y += (ball.y - red.y) * 0.04;
+                        red.x += (ball.x - red.x) * 0.025;
+                        red.y += (ball.y - red.y) * 0.025;
                     }
                     constrain(red);
                 });
@@ -557,12 +556,12 @@
                         if (teamInPossession === 'blue') {
                             const offX = rightHoop.x - 120 + (blueTeam.indexOf(blue) * 40);
                             const offY = 180 + (blueTeam.indexOf(blue) * 80);
-                            blue.x += (offX - blue.x) * 0.03;
-                            blue.y += (offY - blue.y) * 0.03;
+                            blue.x += (offX - blue.x) * 0.02;
+                            blue.y += (offY - blue.y) * 0.02;
                         } else {
                             const targetRed = redTeam[blueTeam.indexOf(blue)];
-                            blue.x += (targetRed.x - 30 - blue.x) * 0.04;
-                            blue.y += (targetRed.y - blue.y) * 0.04;
+                            blue.x += (targetRed.x - 30 - blue.x) * 0.025;
+                            blue.y += (targetRed.y - blue.y) * 0.025;
                         }
                         constrain(blue);
                     }
@@ -575,11 +574,12 @@
 
                 drawCourt();
 
+                // Slower movement speeds for controlled player
                 const sprint = keys['ShiftLeft'] || isSprinting;
-                const speed = sprint ? 5.2 : 3.2;
+                const speed = sprint ? 3.6 : 2.2;
 
                 if (isDunking) {
-                    dunkProgress += 0.038;
+                    dunkProgress += 0.025;
                     activePlayer.x = dunkStartPos.x + (dunkTargetHoop.x - dunkStartPos.x) * dunkProgress;
                     activePlayer.y = dunkStartPos.y + (dunkTargetHoop.y - dunkStartPos.y) * dunkProgress;
                     activePlayer.z = Math.sin(dunkProgress * Math.PI) * 48;
@@ -627,7 +627,7 @@
                 }
 
                 if (isShooting) {
-                    shotPower += shotPowerDir * 1.8;
+                    shotPower += shotPowerDir * 1.2;
                     if (shotPower >= 100) { shotPower = 100; shotPowerDir = -1; }
                     if (shotPower <= 0) { shotPower = 0; shotPowerDir = 1; }
 
@@ -645,7 +645,7 @@
                     const offset = possessor.facingLeft ? -10 : 10;
                     ball.x = possessor.x + offset;
                     ball.y = possessor.y;
-                    ball.z = Math.abs(Math.sin(animTime * 0.25)) * 12;
+                    ball.z = Math.abs(Math.sin(animTime * 0.18)) * 10;
                 } else {
                     ball.vz -= GRAVITY;
                     ball.x += ball.vx;
@@ -672,11 +672,14 @@
                         }
                     });
 
-                    // Pickup ball
+                    // Auto-Switch control to player grabbing ball
                     if (ball.z < 18) {
                         allPlayers.forEach(p => {
                             if (Math.hypot(p.x - ball.x, p.y - ball.y) < 20) {
                                 possessor = p;
+                                if (p.team === 'blue') {
+                                    setControlledPlayer(p);
+                                }
                             }
                         });
                     }
